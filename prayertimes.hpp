@@ -1,4 +1,25 @@
-/*
+/*---------------------------------------------------------*\
+ 
+      PrayerTimes: Islamic Prayer Times Calculator
+
+Note: Code is ported from a GPL JavaScript library to C++
+
+-------------------------------------------------------------
+
+Copyright 2009, Mohammad Ebrahim Mohammadi Panah
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You can get a copy of the GNU General Public License from
+http://www.gnu.org/copyleft/gpl.html
 
 ---------- Copyright block of original JS library ------------
 
@@ -26,16 +47,32 @@ http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/manual
 Calculating Formulas:
 http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/calculation
 
-*/
+\*---------------------------------------------------------*/
 
 #include <cmath>
 #include <string>
 
-/* --------------------- PrayTime Class ----------------------- */
+/* -------------------- PrayerTimes Class --------------------- */
 
-class PrayerTime
+class PrayerTimes
 {
 public:
+	PrayerTimes()
+	: calc_method(Jafari)
+	, asr_juristic(Shafii)
+	, adjust_high_lats(MidNight)
+	, dhuhr_minutes(0)
+	// , time_format(Time24)
+	{
+		method_params[Jafari]  = MethodConfig(16.0, false, 4.0, false, 14.0);	// Jafari
+		method_params[Karachi] = MethodConfig(18.0, true,  0.0, false, 18.0);	// Karachi
+		method_params[ISNA]    = MethodConfig(15.0, true,  0.0, false, 15.0);	// ISNA
+		method_params[MWL]     = MethodConfig(18.0, true,  0.0, false, 17.0);	// MWL
+		method_params[Makkah]  = MethodConfig(19.0, true,  0.0, true,  90.0);	// Makkah
+		method_params[Egypt]   = MethodConfig(19.5, true,  0.0, false, 17.5);	// Egypt
+		method_params[Custom]  = MethodConfig(18.0, true,  0.0, false, 17.0);	// Custom
+	}
+
 /* --------------------- User Interface ----------------------- */
 /*
    get_prayer_times(date, latitude, longitude, timezone)
@@ -43,6 +80,7 @@ public:
 
    set_calc_method(method_id)
    set_asr_method(method_id)
+   set_hl_adjust_method(method_id)		// adjust method for higher latitudes
 
    set_fajr_angle(angle)
    set_maghrib_angle(angle)
@@ -50,8 +88,6 @@ public:
    set_dhuhr_minutes(minutes)		// minutes after mid-day
    set_maghrib_minutes(minutes)		// minutes after sunset
    set_isha_minutes(minutes)		// minutes after maghrib
-
-   set_hl_adjust_method(method_id)		// adjust method for higher latitudes
 
    set_time_format(time_format)
    float_to_time_24(time)
@@ -89,16 +125,18 @@ public:
 		AngleBased,	// angle/60th of night
 	};
 
+#if 0
 	// Time Formats
 	enum TimeFormat
 	{
-		Time24     = 0,    // 24-hour format
-		Time12     = 1,    // 12-hour format
-		Time12NS   = 2,    // 12-hour format with no suffix
-		Float      = 3,    // floating point number
+		Time24   ,    // 24-hour format
+		Time12   ,    // 12-hour format
+		Time12NS ,    // 12-hour format with no suffix
+		Float    ,    // floating point number
 	};
+#endif
 
-	// Time Names
+	// Time IDs
 	enum TimeID
 	{
 		Fajr,
@@ -109,63 +147,53 @@ public:
 		Maghrib,
 		Isha,
 
-		TimeNameSize
+		TimesCount
 	};
-
-	static const char* TimeName[] =
-	{
-		"Fajr",
-		"Sunrise",
-		"Dhuhr",
-		"Asr",
-		"Sunset",
-		"Maghrib",
-		"Isha",
-	};
-
-	static const std::string InvalidTime = "-----";	 // The string used for invalid times
 
 /* ------------------- Calc Method Parameters -------------------- */
 
 	struct MethodConfig
 	{
+		MethodConfig()
+		{
+		}
+
+		MethodConfig(double fajr_angle, bool maghrib_is_minutes, double maghrib_value, bool isha_is_minutes, double isha_value)
+		: fajr_angle(fajr_angle)
+		, maghrib_is_minutes(maghrib_is_minutes)
+		, maghrib_value(maghrib_value)
+		, isha_is_minutes(isha_is_minutes)
+		, isha_value(isha_value)
+		{
+		}
+
 		double fajr_angle;
-		bool maghrib_is_minutes;
+		bool   maghrib_is_minutes;
 		double maghrib_value;		// angle or minutes
-		bool isha_is_minutes;
+		bool   isha_is_minutes;
 		double isha_value;		// angle or minutes
 	};
 
-	MethodConfig method_params[] =
-	{
-		{ 16,   false, 4, false, 14   },	// Jafari
-		{ 18,   true,  0, false, 18   },	// Karachi
-		{ 15,   true,  0, false, 15   },	// ISNA
-		{ 18,   true,  0, false, 17   },	// MWL
-		{ 19,   true,  0, true,  90   },	// Makkah
-		{ 19.5, true,  0, false, 17.5 },	// Egypt
-		{ 18,   true,  0, false, 17   },	// Custom
-	};
+	MethodConfig method_params[CalculationMethodsCount];
 
 /* -------------------- Interface Functions -------------------- */
 
 	/* return prayer times for a given date */
-	/*TODO*/ get_date_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[])
+	void get_date_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[])
 	{
 		latitude = _latitude;
 		longitude = _longitude;
-		julian_date = get_julian_date(year, month, day) - longitude / (15 * 24);
+		timezone = _timezone;
+		julian_date = get_julian_date(year, month, day) - longitude / (double) (15 * 24);
 		compute_day_times(times);
 	}
 
-#if 0
 	/* return prayer times for a given date */
-	get_prayer_times(date, latitude, longitude, timezone)
+	void get_prayer_times(time_t date, double latitude, double longitude, double timezone, double times[])
 	{
-		return get_date_prayer_times(date.get_full_year(), date.get_month() + 1, date.get_date(),
-					latitude, longitude, timezone);
+		tm* t = localtime(&date);
+		get_date_prayer_times(t->tm_year, t->tm_mon + 1, t->tm_mday, latitude, longitude, timezone, times);
 	}
-#endif
 
 	/* set the calculation method  */
 	void set_calc_method(CalculationMethod method_id)
@@ -179,6 +207,12 @@ public:
 		asr_juristic = method_id;
 	}
 
+	/* set adjusting method for higher latitudes */
+	void set_hl_adjust_method(AdjustingMethod method_id)
+	{
+		adjust_high_lats = method_id;
+	}
+
 	/* set the angle for calculating Fajr */
 	void set_fajr_angle(double angle)
 	{
@@ -187,7 +221,7 @@ public:
 	}
 
 	/* set the angle for calculating Maghrib */
-	void set_maghrib_angle(angle)
+	void set_maghrib_angle(double angle)
 	{
 		method_params[Custom].maghrib_is_minutes = false;
 		method_params[Custom].maghrib_value = angle;
@@ -195,7 +229,7 @@ public:
 	}
 
 	/* set the angle for calculating Isha */
-	void set_isha_angle(angle)
+	void set_isha_angle(double angle)
 	{
 		method_params[Custom].isha_is_minutes = false;
 		method_params[Custom].isha_value = angle;
@@ -203,13 +237,13 @@ public:
 	}
 
 	/* set the minutes after mid-day for calculating Dhuhr */
-	void set_dhuhr_minutes(minutes)
+	void set_dhuhr_minutes(double minutes)
 	{
 		dhuhr_minutes = minutes;
 	}
 
 	/* set the minutes after Sunset for calculating Maghrib */
-	void set_maghrib_minutes(minutes)
+	void set_maghrib_minutes(double minutes)
 	{
 		method_params[Custom].maghrib_is_minutes = true;
 		method_params[Custom].maghrib_value = minutes;
@@ -217,29 +251,24 @@ public:
 	}
 
 	/* set the minutes after Maghrib for calculating Isha */
-	void set_isha_minutes(minutes)
+	void set_isha_minutes(double minutes)
 	{
 		method_params[Custom].isha_is_minutes = true;
 		method_params[Custom].isha_value = minutes;
 		calc_method = Custom;
 	}
 
-	/* set adjusting method for higher latitudes */
-	void set_hl_adjust_method(AdjustingMethod method_id)
-	{
-		adjust_high_lats = method_id;
-	}
-
+#if 0
 	/* set the time format */
 	void set_time_format(TimeFormat _time_format)
 	{
 		time_format = _time_format;
 	}
-#if 0
+
 	/* convert float hours to 24h format */
 	std::string float_to_time24(double time)
 	{
-		if (is_nan(time))
+		if (isnan(time))
 			return InvalidTime;
 		time = fix_hour(time + 0.5 / 60);  // add 0.5 minutes to round
 		int hours = Math.floor(time);
@@ -250,7 +279,7 @@ public:
 	/* convert float hours to 12h format */
 	std::string float_to_time12(time, no_suffix)
 	{
-		if (is_nan(time))
+		if (isnan(time))
 			return this.InvalidTime;
 		time = this.fix_hour(time+ 0.5/ 60);  // add 0.5 minutes to round
 		var hours = Math.floor(time);
@@ -317,15 +346,15 @@ private:
 		double q = fix_angle(280.459 + 0.98564736 * d);
 		double l = fix_angle(q + 1.915 * dsin(g) + 0.020 * dsin(2 * g));
 
-		double r = 1.00014 - 0.01671 * dcos(g) - 0.00014 * dcos(2 * g);
+		// double r = 1.00014 - 0.01671 * dcos(g) - 0.00014 * dcos(2 * g);
 		double e = 23.439 - 0.00000036 * d;
 
-		double d = darcsin(dsin(e) * dsin(_l));
-		double ra = darctan2(dcos(e) * dsin(_l), dcos(l)) / 15.0;
+		double dd = darcsin(dsin(e) * dsin(l));
+		double ra = darctan2(dcos(e) * dsin(l), dcos(l)) / 15.0;
 		ra = fix_hour(ra);
 		double eq_t = q / 15.0 - ra;
 
-		return DoublePair(d, eq_t);
+		return DoublePair(dd, eq_t);
 	}
 
 	/* compute equation of time */
@@ -341,9 +370,9 @@ private:
 	}
 
 	/* compute mid-day (Dhuhr, Zawal) time */
-	double compute_mid_day(double t)
+	double compute_mid_day(double _t)
 	{
-		double t = equation_of_time(julian_date + t);
+		double t = equation_of_time(julian_date + _t);
 		double z = fix_hour(12 - t);
 		return z;
 	}
@@ -351,23 +380,23 @@ private:
 	/* compute time for a given angle G */
 	double compute_time(double g, double t)
 	{
-		var d = sun_declination(julian_date + t);
-		var z = compute_mid_day(t);
-		var v = 1.0 / 15.0 * darccos((-dsin(g) - dsin(d) * dsin(latitude)) / (dcos(d) * dcos(latitude)));
+		double d = sun_declination(julian_date + t);
+		double z = compute_mid_day(t);
+		double v = 1.0 / 15.0 * darccos((-dsin(g) - dsin(d) * dsin(latitude)) / (dcos(d) * dcos(latitude)));
 		return z + (g > 90.0 ? - v :  v);
 	}
 
 	/* compute the time of Asr */
 	double compute_asr(int step, double t)  // Shafii: step=1, Hanafi: step=2
 	{
-		var d = sun_declination(julian_date + t);
-		var g = -darccot(step + dtan(fabs(latitude - d)));
+		double d = sun_declination(julian_date + t);
+		double g = -darccot(step + dtan(fabs(latitude - d)));
 		return compute_time(g, t);
 	}
 
 /* ---------------------- Compute Prayer Times ----------------------- */
 
-	// array parameters must be at least of size TimeNameSize
+	// array parameters must be at least of size TimesCount
 
 	/* compute prayer times at given julian date */
 	void compute_times(double times[])
@@ -378,7 +407,7 @@ private:
 		times[Sunrise] = compute_time(180.0 - 0.833, times[Sunrise]);
 		times[Dhuhr]   = compute_mid_day(times[Dhuhr]);
 		times[Asr]     = compute_asr(1 + asr_juristic, times[Asr]);
-		times[Sunset]  = compute_time(0.833, times[Sunset]);;
+		times[Sunset]  = compute_time(0.833, times[Sunset]);
 		times[Maghrib] = compute_time(method_params[calc_method].maghrib_value, times[Maghrib]);
 		times[Isha]    = compute_time(method_params[calc_method].isha_value, times[Isha]);
 	}
@@ -387,20 +416,22 @@ private:
 	/* compute prayer times at given julian date */
 	void compute_day_times(double times[])
 	{
-		times = { 5, 6, 12, 13, 18, 18, 18 };		// default times
+		double default_times[] = { 5, 6, 12, 13, 18, 18, 18 };		// default times
+		for (int i = 0; i < TimesCount; ++i)
+			times[i] = default_times[i];
 
-		for (int i = 0; i < num_iterations; ++i)
+		for (int i = 0; i < NumIterations; ++i)
 			compute_times(times);
 
 		adjust_times(times);
-		adjust_times_format(times);
+		// adjust_times_format(times);
 	}
 
 
 	/* adjust times in a prayer time array */
 	void adjust_times(double times[])
 	{
-		for (int i = 0 ; i < TimeNameSize; ++i)
+		for (int i = 0; i < TimesCount; ++i)
 			times[i] += timezone - longitude / 15.0;
 		times[Dhuhr] += dhuhr_minutes / 60.0;		// Dhuhr
 		if (method_params[calc_method].maghrib_is_minutes)		// Maghrib
@@ -418,7 +449,7 @@ private:
 	{
 		if (time_format == Float)
 			return times;
-		for (var i=0; i<TimeNameSize; i++)
+		for (var i=0; i<TimesCount; i++)
 			if (time_format == Time12)
 				times[i] = float_to_time12(times[i]);
 			else if (time_format == Time12NS)
@@ -436,22 +467,20 @@ private:
 
 		// Adjust Fajr
 		double fajr_diff = night_portion(method_params[calc_method].fajr_angle) * night_time;
-		if (is_nan(times[Fajr]) || time_diff(times[Fahr], times[Sunrise]) > fajr_diff)
+		if (isnan(times[Fajr]) || time_diff(times[Fajr], times[Sunrise]) > fajr_diff)
 			times[Fajr] = times[Sunrise] - fajr_diff;
 
 		// Adjust Isha
 		double isha_angle = method_params[calc_method].isha_is_minutes ? 18.0 : method_params[calc_method].isha_value;
 		double isha_diff = night_portion(isha_angle) * night_time;
-		if (is_nan(times[Isha]) || time_diff(times[Sunset], times[Isha]) > isha_diff)
+		if (isnan(times[Isha]) || time_diff(times[Sunset], times[Isha]) > isha_diff)
 			times[Isha] = times[Sunset] + isha_diff;
 
 		// Adjust Maghrib
 		double maghrib_angle = method_params[calc_method].maghrib_is_minutes ? 4.0 : method_params[calc_method].maghrib_value;
 		double maghrib_diff = night_portion(maghrib_angle) * night_time;
-		if (is_nan(times[Maghrib]) || time_diff(times[Sunset], times[Maghrib]) > maghrib_diff)
+		if (isnan(times[Maghrib]) || time_diff(times[Sunset], times[Maghrib]) > maghrib_diff)
 			times[Maghrib] = times[Sunset] + maghrib_diff;
-
-		return times;
 	}
 
 
@@ -461,7 +490,7 @@ private:
 		switch (adjust_high_lats)
 		{
 			case AngleBased:
-				return 1.0 / 60.0 * angle;
+				return angle / 60.0;
 			case MidNight:
 				return 1.0 / 2.0;
 			case OneSeventh:
@@ -478,7 +507,7 @@ private:
 	/* convert hours to day portions  */
 	void day_portion(double times[])
 	{
-		for (int i = 0; i < TimeNameSize; ++i)
+		for (int i = 0; i < TimesCount; ++i)
 			times[i] /= 24.0;
 	}
 
@@ -501,7 +530,7 @@ private:
 /* ---------------------- Julian Date Functions ----------------------- */
 
 	/* calculate julian date from a calendar date */
-	double julian_date(int year, int month, int day)
+	double get_julian_date(int year, int month, int day)
 	{
 		if (month <= 2)
 		{
@@ -522,7 +551,7 @@ private:
 		tm date = { 0 };
 		date.tm_year = year;
 		date.tm_mon = month - 1;
-		date.tm_dday = day;
+		date.tm_mday = day;
 		time_t ms = mktime(&date);		// seconds since midnight Jan 1, 1970
 		double days = floor(ms / (double) (60 * 60 * 24));
 		return j1970 + days - 0.5;
@@ -609,11 +638,11 @@ private:
 private:
 /* ---------------------- Private Variables -------------------- */
 
-	CalculationMethod calc_method = Jafari;		// caculation method
-	JuristicMethod asr_juristic = Shafii;		// Juristic method for Asr
-	AdjustingMethod adjust_high_lats = MidNight;	// adjusting method for higher latitudes
-	double dhuhr_minutes = 0;		// minutes after mid-day for Dhuhr
-	TimeFormat time_format = Time24;
+	CalculationMethod calc_method;		// caculation method
+	JuristicMethod asr_juristic;		// Juristic method for Asr
+	AdjustingMethod adjust_high_lats;	// adjusting method for higher latitudes
+	double dhuhr_minutes;		// minutes after mid-day for Dhuhr
+	// TimeFormat time_format;
 	double latitude;
 	double longitude;
 	double timezone;
@@ -621,5 +650,5 @@ private:
 
 /* --------------------- Technical Settings -------------------- */
 
-	static const num_iterations = 1;		// number of iterations needed to compute times
+	static const int NumIterations = 1;		// number of iterations needed to compute times
 };
