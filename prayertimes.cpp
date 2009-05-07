@@ -1,8 +1,12 @@
-/*---------------------------------------------------------*\
+/*-------------------- In the name of God ----------------------*\
  
-      PrayerTimes: Islamic Prayer Times Calculator
+    PrayerTimes 0.1
+    Islamic Prayer Times Calculator
+		 
+Developed by:
+  Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>
 
--------------------------------------------------------------
+------------------------------------------------------------------
 
 Copyright 2009, Mohammad Ebrahim Mohammadi Panah
 
@@ -19,9 +23,12 @@ GNU General Public License for more details.
 You can get a copy of the GNU General Public License from
 http://www.gnu.org/copyleft/gpl.html
 
-\*---------------------------------------------------------*/
+\*--------------------------------------------------------------*/
 
 #include "prayertimes.hpp"
+
+#define PROG_NAME "prayertimes"
+#define PROG_NAME_FRIENDLY "PrayerTimes"
 
 static const char* TimeName[] =
 {
@@ -36,6 +43,7 @@ static const char* TimeName[] =
 
 int main()
 {
+	fprintf(stderr, PROG_NAME_FRIENDLY " %u.%u\n\n", PrayerTimes::VERSION_MAJOR, PrayerTimes::VERSION_MINOR);
 	PrayerTimes prayer_times;
 	prayer_times.set_calc_method(PrayerTimes::Jafari);
 	prayer_times.set_asr_method(PrayerTimes::Shafii);
@@ -43,8 +51,11 @@ int main()
 
 	time_t t = time(NULL);
 	double times[PrayerTimes::TimesCount];
-	prayer_times.get_prayer_times(t, 35.7061, 51.4358, 4.5, times);
+	double timezone = PrayerTimes::get_effective_timezone(t);
+	printf("date     : %s", ctime(&t));
+	printf("timezone : %.1lf\n\n", timezone);
+	prayer_times.get_prayer_times(t, 35.7061, 51.4358, timezone, times);
 	for (int i = 0; i < PrayerTimes::TimesCount; ++i)
-		printf("%8s : %10lf : %s\n", TimeName[i], times[i], PrayerTimes::float_to_time24(times[i]).c_str());
+		printf("%8s : %s\n", TimeName[i], PrayerTimes::float_time_to_time24(times[i]).c_str());
 	return 0;
 }

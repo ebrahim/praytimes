@@ -1,10 +1,14 @@
-/*---------------------------------------------------------*\
+/*-------------------- In the name of God ----------------------*\
  
-      PrayerTimes: Islamic Prayer Times Calculator
+    PrayerTimes 0.1
+    Islamic Prayer Times Calculator
+		 
+Developed by:
+  Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>
 
-Note: Code is ported from a GPL JavaScript library to C++
+Based on a GPL JavaScript code by Hamid Zarrabi-Zadeh
 
--------------------------------------------------------------
+------------------------------------------------------------------
 
 Copyright 2009, Mohammad Ebrahim Mohammadi Panah
 
@@ -21,7 +25,7 @@ GNU General Public License for more details.
 You can get a copy of the GNU General Public License from
 http://www.gnu.org/copyleft/gpl.html
 
----------- Copyright block of original JS library ------------
+------------- Copyright block of original JS library -------------
 
 PrayTime: The Prayer Times Calculator (ver 1.1)
 Copyright (C) 2007, Hamid Zarrabi-Zadeh
@@ -39,7 +43,7 @@ GNU General Public License for more details.
 You can get a copy of the GNU General Public License from
 http://www.gnu.org/copyleft/gpl.html
 
----------------------- Help and Manual -----------------------
+------------------------ Help and Manual -------------------------
 
 PrayTime User's Manual:
 http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/manual
@@ -47,7 +51,7 @@ http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/manual
 Calculating Formulas:
 http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/calculation
 
-\*---------------------------------------------------------*/
+\*--------------------------------------------------------------*/
 
 #include <cmath>
 #include <string>
@@ -57,14 +61,20 @@ http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/calculation
 class PrayerTimes
 {
 public:
+	enum
+	{
+		VERSION_MAJOR = 0,
+		VERSION_MINOR = 1,
+	};
 /* --------------------- User Interface ----------------------- */
 /*
 	PrayerTimes(CalculationMethod calc_method = Jafari,
 			JuristicMethod asr_juristic = Shafii,
 			AdjustingMethod adjust_high_lats = MidNight,
 			double dhuhr_minutes = 0)
-	get_prayer_times(date, latitude, longitude, timezone)
-	get_date_prayer_times(year, month, day, latitude, longitude, timezone)
+
+	get_prayer_times(date, latitude, longitude, timezone, &times)
+	get_prayer_times(year, month, day, latitude, longitude, timezone, &times)
 
 	set_calc_method(method_id)
 	set_asr_method(method_id)
@@ -77,10 +87,10 @@ public:
 	set_maghrib_minutes(minutes)		// minutes after sunset
 	set_isha_minutes(minutes)		// minutes after maghrib
 
-	// set_time_format(time_format)
-	float_to_time24(time)
-	float_to_time12(time)
-	float_to_time12ns(time)
+	get_float_time_parts(time, &hours, &minutes)
+	float_time_to_time24(time)
+	float_time_to_time12(time)
+	float_time_to_time12ns(time)
 */
 
 	// Calculation Methods
@@ -113,17 +123,6 @@ public:
 		AngleBased,	// angle/60th of night
 	};
 
-#if 0
-	// Time Formats
-	enum TimeFormat
-	{
-		Time24   ,    // 24-hour format
-		Time12   ,    // 12-hour format
-		Time12NS ,    // 12-hour format with no suffix
-		Float    ,    // floating point number
-	};
-#endif
-
 	// Time IDs
 	enum TimeID
 	{
@@ -148,7 +147,6 @@ public:
 	, asr_juristic(asr_juristic)
 	, adjust_high_lats(adjust_high_lats)
 	, dhuhr_minutes(dhuhr_minutes)
-	// , time_format(Time24)
 	{
 		method_params[Jafari]  = MethodConfig(16.0, false, 4.0, false, 14.0);	// Jafari
 		method_params[Karachi] = MethodConfig(18.0, true,  0.0, false, 18.0);	// Karachi
@@ -160,7 +158,7 @@ public:
 	}
 
 	/* return prayer times for a given date */
-	void get_date_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[])
+	void get_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[])
 	{
 		latitude = _latitude;
 		longitude = _longitude;
@@ -173,7 +171,7 @@ public:
 	void get_prayer_times(time_t date, double latitude, double longitude, double timezone, double times[])
 	{
 		tm* t = localtime(&date);
-		get_date_prayer_times(t->tm_year, t->tm_mon + 1, t->tm_mday, latitude, longitude, timezone, times);
+		get_prayer_times(1900 + t->tm_year, t->tm_mon + 1, t->tm_mday, latitude, longitude, timezone, times);
 	}
 
 	/* set the calculation method  */
@@ -239,42 +237,40 @@ public:
 		calc_method = Custom;
 	}
 
-#if 0
-	/* set the time format */
-	void set_time_format(TimeFormat _time_format)
+	/* get hours and minutes parts of a float time */
+	static void get_float_time_parts(double time, int& hours, int& minutes)
 	{
-		time_format = _time_format;
+		time = fix_hour(time + 0.5 / 60);		// add 0.5 minutes to round
+		hours = floor(time);
+		minutes = floor((time - hours) * 60);
 	}
-#endif
 
 	/* convert float hours to 24h format */
-	static std::string float_to_time24(double time)
+	static std::string float_time_to_time24(double time)
 	{
 		if (isnan(time))
 			return std::string();
-		time = fix_hour(time + 0.5 / 60);  // add 0.5 minutes to round
-		int hours = floor(time);
-		int minutes = floor((time - hours) * 60);
+		int hours, minutes;
+		get_float_time_parts(time, hours, minutes);
 		return two_digits_format(hours) + ':' + two_digits_format(minutes);
 	}
 
 	/* convert float hours to 12h format */
-	static std::string float_to_time12(double time, bool no_suffix = false)
+	static std::string float_time_to_time12(double time, bool no_suffix = false)
 	{
 		if (isnan(time))
 			return std::string();
-		time = fix_hour(time + 0.5 / 60);  // add 0.5 minutes to round
-		int hours = floor(time);
-		int minutes = floor((time - hours) * 60);
+		int hours, minutes;
+		get_float_time_parts(time, hours, minutes);
 		const char* suffix = hours >= 12 ? " PM" : " AM";
 		hours = (hours + 12 - 1) % 12 + 1;
 		return int_to_string(hours) + ':' + two_digits_format(minutes) + (no_suffix ? "" : suffix);
 	}
 
 	/* convert float hours to 12h format with no suffix */
-	static std::string float_to_time12ns(double time)
+	static std::string float_time_to_time12ns(double time)
 	{
-		return float_to_time12(time, true);
+		return float_time_to_time12(time, true);
 	}
 
 /* ---------------------- Time-Zone Functions ----------------------- */
@@ -282,18 +278,25 @@ public:
 	/* compute local time-zone for a specific date */
 	static double get_effective_timezone(time_t local_time)
 	{
-		time_t gmt_time = mktime(gmtime(&local_time));
-		return (local_time - gmt_time) / (double) (60 * 60);
+		tm* tmp = localtime(&local_time);
+		tmp->tm_isdst = 0;
+		time_t local = mktime(tmp);
+		tmp = gmtime(&local_time);
+		tmp->tm_isdst = 0;
+		time_t gmt = mktime(tmp);
+		return (local - gmt) / 3600.0;
 	}
 
-	/* return effective timezone for a given date */
+	/* compute local time-zone for a specific date */
 	static double get_effective_timezone(int year, int month, int day)
 	{
-		tm t = { 0 };
-		t.tm_mday = day;
-		t.tm_mon = month - 1;
-		t.tm_year = year;
-		return get_effective_timezone(mktime(&t));
+		tm date = { 0 };
+		date.tm_year = year - 1900;
+		date.tm_mon = month - 1;
+		date.tm_mday = day;
+		date.tm_isdst = -1;		// determine it yourself from system
+		time_t local = mktime(&date);		// seconds since midnight Jan 1, 1970
+		return get_effective_timezone(local);
 	}
 
 private:
@@ -305,7 +308,11 @@ private:
 		{
 		}
 
-		MethodConfig(double fajr_angle, bool maghrib_is_minutes, double maghrib_value, bool isha_is_minutes, double isha_value)
+		MethodConfig(double fajr_angle,
+				bool maghrib_is_minutes,
+				double maghrib_value,
+				bool isha_is_minutes,
+				double isha_value)
 		: fajr_angle(fajr_angle)
 		, maghrib_is_minutes(maghrib_is_minutes)
 		, maghrib_value(maghrib_value)
@@ -411,11 +418,10 @@ private:
 		for (int i = 0; i < TimesCount; ++i)
 			times[i] = default_times[i];
 
-		for (int i = 0; i < NumIterations; ++i)
+		for (int i = 0; i < NUM_ITERATIONS; ++i)
 			compute_times(times);
 
 		adjust_times(times);
-		// adjust_times_format(times);
 	}
 
 
@@ -433,23 +439,6 @@ private:
 		if (adjust_high_lats != None)
 			adjust_high_lat_times(times);
 	}
-
-#if 0
-	/* convert times array to given time format */
-	adjust_times_format(double times[])
-	{
-		if (time_format == Float)
-			return times;
-		for (var i=0; i<TimesCount; i++)
-			if (time_format == Time12)
-				times[i] = float_to_time12(times[i]);
-			else if (time_format == Time12NS)
-				times[i] = float_to_time12(times[i], true);
-			else
-				times[i] = float_to_time24(times[i]);
-		return times;
-	}
-#endif
 
 	/* adjust Fajr, Isha and Maghrib for locations in higher latitudes */
 	void adjust_high_lat_times(double times[])
@@ -549,9 +538,10 @@ private:
 	{
 		double j1970 = 2440588.0;
 		tm date = { 0 };
-		date.tm_year = year;
+		date.tm_year = year - 1900;
 		date.tm_mon = month - 1;
 		date.tm_mday = day;
+		date.tm_isdst = -1;		// determine it yourself from system
 		time_t ms = mktime(&date);		// seconds since midnight Jan 1, 1970
 		double days = floor(ms / (double) (60 * 60 * 24));
 		return j1970 + days - 0.5;
@@ -650,9 +640,7 @@ private:
 	double timezone;
 	double julian_date;
 
-	// TimeFormat time_format;
-
 /* --------------------- Technical Settings -------------------- */
 
-	static const int NumIterations = 1;		// number of iterations needed to compute times
+	static const int NUM_ITERATIONS = 1;		// number of iterations needed to compute times
 };
