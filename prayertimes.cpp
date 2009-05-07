@@ -1,6 +1,6 @@
 /*-------------------- In the name of God ----------------------*\
 
-    PrayerTimes 0.1
+    PrayerTimes 0.3
     Islamic Prayer Times Calculator
 
 Developed by:
@@ -35,37 +35,7 @@ http://www.gnu.org/copyleft/gpl.html
 
 #define PROG_NAME "prayertimes"
 #define PROG_NAME_FRIENDLY "PrayerTimes"
-#define PROG_VERSION "0.2"
-
-#if 0
-// Calculation Method Names
-static const char* CalculationMethodName[] =
-{
-	"Jafari", 	// Ithna Ashari
-	"Karachi",	// University of Islamic Sciences, Karachi
-	"ISNA",   	// Islamic Society of North America (ISNA)
-	"MWL",    	// Muslim World League (MWL)
-	"Makkah", 	// Umm al-Qura, Makkah
-	"Egypt",  	// Egyptian General Authority of Survey
-	"Custom", 	// Custom Setting
-};
-
-// Juristic Method Names
-static const char* JuristicMethodName[] =
-{
-	"Shafii",    // Shafii (standard)
-	"Hanafi",    // Hanafi
-};
-
-// Adjusting Method Names for Higher Latitudes
-static const char* AdjustingMethodName[] =
-{
-	"None",      	// No adjustment
-	"MidNight",  	// middle of night
-	"OneSeventh",	// 1/7th of night
-	"AngleBased",	// angle/60th of night
-};
-#endif
+#define PROG_VERSION "0.3"
 
 static const char* TimeName[] =
 {
@@ -78,16 +48,52 @@ static const char* TimeName[] =
 	"Isha",
 };
 
-void print_help(FILE* f, option long_options[])
+void print_help(FILE* f)
 {
 	fputs(PROG_NAME_FRIENDLY " " PROG_VERSION "\n\n", stderr);
-	fputs("Usage: " PROG_NAME " [optionals...] requireds...\n\n", stderr);
-	for (option* opt = long_options; opt->name; ++opt)
-	{
-		fprintf(f, "    -%c --%s %s\n", opt->val ? opt->val : '-', opt->name, opt->has_arg ? "arg" : "");
-		// TODO: Add description of commands and their possible arguments
-	}
-}
+	fputs("Usage: " PROG_NAME " options...\n"
+	      "\n"
+		  " Options\n"
+	      "    --help                      -h  you're reading it\n"
+	      "    --version                   -v  prints name and version, then exits\n"
+	      "    --date arg                  -d  get prayer times for arbitrary date\n"
+	      "    --timezone arg              -z  get prayer times for arbitrary timezone\n"
+	      "  * --latitude arg              -l  latitude of desired location\n"
+	      "  * --longitude arg             -n  longitude of desired location\n"
+	      "    --calc-method arg           -c  select prayer time calculation method\n"
+	      "    --asr-juristic-method arg   -a  select Juristic method for calculating Asr prayer time\n"
+	      "    --high-lats-method arg      -i  select adjusting method for higher latitude\n"
+	      "    --dhuhr-minutes arg             minutes after mid-way for calculating Dhuhr prayer time\n"
+	      " ** --maghrib-minutes arg           minutes after sunset for calculating Maghrib prayer time\n"
+	      " ** --isha-minutes arg              minutes after Maghrib for calculating Isha prayer time\n"
+	      " ** --fajr-angle arg                angle for calculating Fajr prayer time\n"
+	      " ** --maghrib-angle arg             angle for calculating Maghrib prayer time\n"
+	      " ** --isha-angle arg                angle for calculating Isha prayer time\n"
+		  "\n"
+		  "  * These options are required\n"
+		  " ** By providing any of these options the calculation method is set to custom\n"
+	      "\n"
+		  " Possible arguments for --calc-method\n"
+	      "    jafari        Ithna Ashari\n"
+	      "    karachi       University of Islamic Sciences, Karachi\n"
+	      "    isna          Islamic Society of North America (ISNA)\n"
+	      "    mwl           Muslim World League (MWL)\n"
+	      "    makkah        Umm al-Qura, Makkah\n"
+	      "    egypt         Egyptian General Authority of Survey\n"
+	      "    custom        Custom Setting\n"
+          "\n"
+		  " Possible arguments for --asr-juristic-method\n"
+	      "    shafii        Shafii (standard)\n"
+	      "    hanafi        Hanafi\n"
+          "\n"
+		  " Possible arguments for --high-lats-method\n"
+	      "    none          No adjustment\n"
+	      "    midnight      middle of night\n"
+	      "    oneseventh    1/7th of night\n"
+	      "    anglebased    angle/60th of night\n"
+		  , stderr);
+               
+}              
 
 int main(int argc, char* argv[])
 {
@@ -177,7 +183,7 @@ int main(int argc, char* argv[])
 				}
 				break;
 			case 'h':		// --help
-				print_help(stdout, long_options);
+				print_help(stdout);
 				return 0;
 			case 'v':		// --version
 				puts(PROG_NAME_FRIENDLY " " PROG_VERSION);
@@ -263,7 +269,7 @@ int main(int argc, char* argv[])
 				break;
 			default:
 				fprintf(stderr, "Error: Unknown option '%c'\n", c);
-				print_help(stderr, long_options);
+				print_help(stderr);
 				return 2;
 		}
 	}
