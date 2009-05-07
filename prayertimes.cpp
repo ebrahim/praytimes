@@ -39,12 +39,12 @@ int main()
 	PrayerTimes prayer_times;
 	prayer_times.set_calc_method(PrayerTimes::Jafari);
 	prayer_times.set_asr_method(PrayerTimes::Shafii);
-	prayer_times.set_hl_adjust_method(PrayerTimes::MidNight);
+	prayer_times.set_high_lats_adjust_method(PrayerTimes::MidNight);
 
 	time_t t = time(NULL);
 	double times[PrayerTimes::TimesCount];
 	prayer_times.get_prayer_times(t, 35.7061, 51.4358, 4.5, times);
 	for (int i = 0; i < PrayerTimes::TimesCount; ++i)
-		printf("%8s : %lf\n", TimeName[i], times[i]);
+		printf("%8s : %10lf : %s\n", TimeName[i], times[i], PrayerTimes::float_to_time24(times[i]).c_str());
 	return 0;
 }

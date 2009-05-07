@@ -57,42 +57,30 @@ http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/calculation
 class PrayerTimes
 {
 public:
-	PrayerTimes()
-	: calc_method(Jafari)
-	, asr_juristic(Shafii)
-	, adjust_high_lats(MidNight)
-	, dhuhr_minutes(0)
-	// , time_format(Time24)
-	{
-		method_params[Jafari]  = MethodConfig(16.0, false, 4.0, false, 14.0);	// Jafari
-		method_params[Karachi] = MethodConfig(18.0, true,  0.0, false, 18.0);	// Karachi
-		method_params[ISNA]    = MethodConfig(15.0, true,  0.0, false, 15.0);	// ISNA
-		method_params[MWL]     = MethodConfig(18.0, true,  0.0, false, 17.0);	// MWL
-		method_params[Makkah]  = MethodConfig(19.0, true,  0.0, true,  90.0);	// Makkah
-		method_params[Egypt]   = MethodConfig(19.5, true,  0.0, false, 17.5);	// Egypt
-		method_params[Custom]  = MethodConfig(18.0, true,  0.0, false, 17.0);	// Custom
-	}
-
 /* --------------------- User Interface ----------------------- */
 /*
-   get_prayer_times(date, latitude, longitude, timezone)
-   get_date_prayer_times(year, month, day, latitude, longitude, timezone)
+	PrayerTimes(CalculationMethod calc_method = Jafari,
+			JuristicMethod asr_juristic = Shafii,
+			AdjustingMethod adjust_high_lats = MidNight,
+			double dhuhr_minutes = 0)
+	get_prayer_times(date, latitude, longitude, timezone)
+	get_date_prayer_times(year, month, day, latitude, longitude, timezone)
 
-   set_calc_method(method_id)
-   set_asr_method(method_id)
-   set_hl_adjust_method(method_id)		// adjust method for higher latitudes
+	set_calc_method(method_id)
+	set_asr_method(method_id)
+	set_high_lats_adjust_method(method_id)		// adjust method for higher latitudes
 
-   set_fajr_angle(angle)
-   set_maghrib_angle(angle)
-   set_isha_angle(angle)
-   set_dhuhr_minutes(minutes)		// minutes after mid-day
-   set_maghrib_minutes(minutes)		// minutes after sunset
-   set_isha_minutes(minutes)		// minutes after maghrib
+	set_fajr_angle(angle)
+	set_maghrib_angle(angle)
+	set_isha_angle(angle)
+	set_dhuhr_minutes(minutes)		// minutes after mid-day
+	set_maghrib_minutes(minutes)		// minutes after sunset
+	set_isha_minutes(minutes)		// minutes after maghrib
 
-   set_time_format(time_format)
-   float_to_time_24(time)
-   float_to_time_12(time)
-   float_to_time_12_ns(time)
+	// set_time_format(time_format)
+	float_to_time24(time)
+	float_to_time12(time)
+	float_to_time12ns(time)
 */
 
 	// Calculation Methods
@@ -150,33 +138,26 @@ public:
 		TimesCount
 	};
 
-/* ------------------- Calc Method Parameters -------------------- */
-
-	struct MethodConfig
-	{
-		MethodConfig()
-		{
-		}
-
-		MethodConfig(double fajr_angle, bool maghrib_is_minutes, double maghrib_value, bool isha_is_minutes, double isha_value)
-		: fajr_angle(fajr_angle)
-		, maghrib_is_minutes(maghrib_is_minutes)
-		, maghrib_value(maghrib_value)
-		, isha_is_minutes(isha_is_minutes)
-		, isha_value(isha_value)
-		{
-		}
-
-		double fajr_angle;
-		bool   maghrib_is_minutes;
-		double maghrib_value;		// angle or minutes
-		bool   isha_is_minutes;
-		double isha_value;		// angle or minutes
-	};
-
-	MethodConfig method_params[CalculationMethodsCount];
-
 /* -------------------- Interface Functions -------------------- */
+
+	PrayerTimes(CalculationMethod calc_method = Jafari,
+			JuristicMethod asr_juristic = Shafii,
+			AdjustingMethod adjust_high_lats = MidNight,
+			double dhuhr_minutes = 0)
+	: calc_method(calc_method)
+	, asr_juristic(asr_juristic)
+	, adjust_high_lats(adjust_high_lats)
+	, dhuhr_minutes(dhuhr_minutes)
+	// , time_format(Time24)
+	{
+		method_params[Jafari]  = MethodConfig(16.0, false, 4.0, false, 14.0);	// Jafari
+		method_params[Karachi] = MethodConfig(18.0, true,  0.0, false, 18.0);	// Karachi
+		method_params[ISNA]    = MethodConfig(15.0, true,  0.0, false, 15.0);	// ISNA
+		method_params[MWL]     = MethodConfig(18.0, true,  0.0, false, 17.0);	// MWL
+		method_params[Makkah]  = MethodConfig(19.0, true,  0.0, true,  90.0);	// Makkah
+		method_params[Egypt]   = MethodConfig(19.5, true,  0.0, false, 17.5);	// Egypt
+		method_params[Custom]  = MethodConfig(18.0, true,  0.0, false, 17.0);	// Custom
+	}
 
 	/* return prayer times for a given date */
 	void get_date_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[])
@@ -208,7 +189,7 @@ public:
 	}
 
 	/* set adjusting method for higher latitudes */
-	void set_hl_adjust_method(AdjustingMethod method_id)
+	void set_high_lats_adjust_method(AdjustingMethod method_id)
 	{
 		adjust_high_lats = method_id;
 	}
@@ -264,72 +245,82 @@ public:
 	{
 		time_format = _time_format;
 	}
+#endif
 
 	/* convert float hours to 24h format */
-	std::string float_to_time24(double time)
+	static std::string float_to_time24(double time)
 	{
 		if (isnan(time))
-			return InvalidTime;
+			return std::string();
 		time = fix_hour(time + 0.5 / 60);  // add 0.5 minutes to round
-		int hours = Math.floor(time);
-		int minutes = Math.floor((time- hours)* 60);
-		return this.two_digits_format(hours)+':'+ this.two_digits_format(minutes);
+		int hours = floor(time);
+		int minutes = floor((time - hours) * 60);
+		return two_digits_format(hours) + ':' + two_digits_format(minutes);
 	}
 
 	/* convert float hours to 12h format */
-	std::string float_to_time12(time, no_suffix)
+	static std::string float_to_time12(double time, bool no_suffix = false)
 	{
 		if (isnan(time))
-			return this.InvalidTime;
-		time = this.fix_hour(time+ 0.5/ 60);  // add 0.5 minutes to round
-		var hours = Math.floor(time);
-		var minutes = Math.floor((time- hours)* 60);
-		var suffix = hours >= 12 ? ' pm' : ' am';
-		hours = (hours+ 12 -1)% 12+ 1;
-		return hours+':'+ this.two_digits_format(minutes)+ (no_suffix ? '' : suffix);
+			return std::string();
+		time = fix_hour(time + 0.5 / 60);  // add 0.5 minutes to round
+		int hours = floor(time);
+		int minutes = floor((time - hours) * 60);
+		const char* suffix = hours >= 12 ? " PM" : " AM";
+		hours = (hours + 12 - 1) % 12 + 1;
+		return int_to_string(hours) + ':' + two_digits_format(minutes) + (no_suffix ? "" : suffix);
 	}
 
 	/* convert float hours to 12h format with no suffix */
-	std::string float_to_time12ns(time)
+	static std::string float_to_time12ns(double time)
 	{
-		return this.float_to_time12(time, true);
+		return float_to_time12(time, true);
 	}
-#endif
 
 /* ---------------------- Time-Zone Functions ----------------------- */
 
 	/* compute local time-zone for a specific date */
-	double get_timezone(time_t local_time)
+	static double get_effective_timezone(time_t local_time)
 	{
 		time_t gmt_time = mktime(gmtime(&local_time));
 		return (local_time - gmt_time) / (double) (60 * 60);
 	}
 
 	/* return effective timezone for a given date */
-	double effective_timezone(int year, int month, int day)
+	static double get_effective_timezone(int year, int month, int day)
 	{
 		tm t = { 0 };
 		t.tm_mday = day;
 		t.tm_mon = month - 1;
 		t.tm_year = year;
-		return get_timezone(mktime(&t));
+		return get_effective_timezone(mktime(&t));
 	}
-
-#if 0
-	/* compute base time-zone of the system */
-	get_base_timezone()
-	{
-		return this.get_timezone(new Date(2000, 0, 15))
-	}
-
-	/* detect daylight saving in a given date */
-	detect_daylight_saving(date)
-	{
-		return this.get_timezone(date) != this.get_base_timezone();
-	}
-#endif
 
 private:
+/* ------------------- Calc Method Parameters -------------------- */
+
+	struct MethodConfig
+	{
+		MethodConfig()
+		{
+		}
+
+		MethodConfig(double fajr_angle, bool maghrib_is_minutes, double maghrib_value, bool isha_is_minutes, double isha_value)
+		: fajr_angle(fajr_angle)
+		, maghrib_is_minutes(maghrib_is_minutes)
+		, maghrib_value(maghrib_value)
+		, isha_is_minutes(isha_is_minutes)
+		, isha_value(isha_value)
+		{
+		}
+
+		double fajr_angle;
+		bool   maghrib_is_minutes;
+		double maghrib_value;		// angle or minutes
+		bool   isha_is_minutes;
+		double isha_value;		// angle or minutes
+	};
+
 /* ---------------------- Calculation Functions ----------------------- */
 
 	/* References: */
@@ -514,18 +505,27 @@ private:
 /* ---------------------- Misc Functions ----------------------- */
 
 	/* compute the difference between two times  */
-	double time_diff(double time1, double time2)
+	static double time_diff(double time1, double time2)
 	{
 		return fix_hour(time2 - time1);
 	}
 
-#if 0
-	/* add a leading 0 if necessary */
-	two_digits_format(num)
+	static std::string int_to_string(int num)
 	{
-		return (num <10) ? '0'+ num : num;
+		char tmp[16];
+		tmp[0] = '\0';
+		sprintf(tmp, "%d", num);
+		return std::string(tmp);
 	}
-#endif
+
+	/* add a leading 0 if necessary */
+	static std::string two_digits_format(int num)
+	{
+		char tmp[16];
+		tmp[0] = '\0';
+		sprintf(tmp, "%2.2d", num);
+		return std::string(tmp);
+	}
 
 /* ---------------------- Julian Date Functions ----------------------- */
 
@@ -560,67 +560,67 @@ private:
 /* ---------------------- Trigonometric Functions ----------------------- */
 
 	/* degree sin */
-	double dsin(double d)
+	static double dsin(double d)
 	{
 		return sin(deg2rad(d));
 	}
 
 	/* degree cos */
-	double dcos(double d)
+	static double dcos(double d)
 	{
 		return cos(deg2rad(d));
 	}
 
 	/* degree tan */
-	double dtan(double d)
+	static double dtan(double d)
 	{
 		return tan(deg2rad(d));
 	}
 
 	/* degree arcsin */
-	double darcsin(double x)
+	static double darcsin(double x)
 	{
 		return rad2deg(asin(x));
 	}
 
 	/* degree arccos */
-	double darccos(double x)
+	static double darccos(double x)
 	{
 		return rad2deg(acos(x));
 	}
 
 	/* degree arctan */
-	double darctan(double x)
+	static double darctan(double x)
 	{
 		return rad2deg(atan(x));
 	}
 
 	/* degree arctan2 */
-	double darctan2(double y, double x)
+	static double darctan2(double y, double x)
 	{
 		return rad2deg(atan2(y, x));
 	}
 
 	/* degree arccot */
-	double darccot(double x)
+	static double darccot(double x)
 	{
 		return rad2deg(atan(1.0 / x));
 	}
 
 	/* degree to radian */
-	double deg2rad(double d)
+	static double deg2rad(double d)
 	{
 		return d * M_PI / 180.0;
 	}
 
 	/* radian to degree */
-	double rad2deg(double r)
+	static double rad2deg(double r)
 	{
 		return r * 180.0 / M_PI;
 	}
 
 	/* range reduce angle in degrees. */
-	double fix_angle(double a)
+	static double fix_angle(double a)
 	{
 		a = a - 360.0 * floor(a / 360.0);
 		a = a < 0.0 ? a + 360.0 : a;
@@ -628,7 +628,7 @@ private:
 	}
 
 	/* range reduce hours to 0..23 */
-	double fix_hour(double a)
+	static double fix_hour(double a)
 	{
 		a = a - 24.0 * floor(a / 24.0);
 		a = a < 0.0 ? a + 24.0 : a;
@@ -638,15 +638,19 @@ private:
 private:
 /* ---------------------- Private Variables -------------------- */
 
+	MethodConfig method_params[CalculationMethodsCount];
+
 	CalculationMethod calc_method;		// caculation method
 	JuristicMethod asr_juristic;		// Juristic method for Asr
 	AdjustingMethod adjust_high_lats;	// adjusting method for higher latitudes
 	double dhuhr_minutes;		// minutes after mid-day for Dhuhr
-	// TimeFormat time_format;
+
 	double latitude;
 	double longitude;
 	double timezone;
 	double julian_date;
+
+	// TimeFormat time_format;
 
 /* --------------------- Technical Settings -------------------- */
 
