@@ -1,6 +1,6 @@
 /*-------------------- In the name of God ----------------------*\
  
-    libPrayerTimes 0.1
+    libprayertimes 0.1
     Islamic Prayer Times Calculator
 		 
 Developed by:
