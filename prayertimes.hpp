@@ -53,6 +53,7 @@ http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/calculation
 
 \*--------------------------------------------------------------*/
 
+#include <cstdio>
 #include <cmath>
 #include <string>
 
@@ -64,7 +65,7 @@ public:
 	enum
 	{
 		VERSION_MAJOR = 0,
-		VERSION_MINOR = 1,
+		VERSION_MINOR = 2,
 	};
 /* --------------------- User Interface ----------------------- */
 /*
