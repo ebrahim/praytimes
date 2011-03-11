@@ -1,7 +1,7 @@
 /*-------------------- In the name of God ----------------------*\
 
     PrayerTimes 0.3
-    Islamic Prayer Times Calculator
+    Islamic prayer times calculator
 
 Developed by:
   Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>

@@ -1,57 +1,41 @@
-/*-------------------- In the name of God ----------------------*\
+/*-------------------------- In the name of God ----------------------------*\
  
-    libprayertimes 0.2
-    Islamic Prayer Times Calculator
-		 
-Developed by:
-  Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>
+    libprayertimes 1.0
+    Islamic prayer times calculator library
+    Based on PrayTimes 1.1 JavaScript library
 
-Based on a GPL JavaScript code by Hamid Zarrabi-Zadeh
+----------------------------- Copyright Block --------------------------------
 
-------------------------------------------------------------------
+Copyright (C) 2007-2010 PrayTimes.org
 
-Copyright 2009, Mohammad Ebrahim Mohammadi Panah
+Developed By: Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>
+Based on a JavaScript Code By: Hamid Zarrabi-Zadeh
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+License: GNU General Public License, ver 3
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+TERMS OF USE:
+    Permission is granted to use this code, with or
+    without modification, in any website or application
+    provided that credit is given to the original work
+    with a link back to PrayTimes.org.
 
-You can get a copy of the GNU General Public License from
-http://www.gnu.org/copyleft/gpl.html
+This program is distributed in the hope that it will
+be useful, but WITHOUT ANY WARRANTY.
 
-------------- Copyright block of original JS library -------------
+PLEASE DO NOT REMOVE THIS COPYRIGHT BLOCK.
 
-PrayTime: The Prayer Times Calculator (ver 1.1)
-Copyright (C) 2007, Hamid Zarrabi-Zadeh
+------------------------------------------------------------------------------
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You can get a copy of the GNU General Public License from
-http://www.gnu.org/copyleft/gpl.html
-
------------------------- Help and Manual -------------------------
-
-PrayTime User's Manual:
-http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/manual
+User's Manual:
+http://praytimes.org/manual
 
 Calculating Formulas:
-http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/calculation
+http://praytimes.org/calculation
 
-\*--------------------------------------------------------------*/
+Code Repository:
+http://code.ebrahim.ir/prayertimes/
+
+\*--------------------------------------------------------------------------*/
 
 #include <cstdio>
 #include <cmath>
@@ -64,8 +48,8 @@ class PrayerTimes
 public:
 	enum
 	{
-		VERSION_MAJOR = 0,
-		VERSION_MINOR = 2,
+		VERSION_MAJOR = 1,
+		VERSION_MINOR = 0,
 	};
 /* --------------------- User Interface ----------------------- */
 /*
