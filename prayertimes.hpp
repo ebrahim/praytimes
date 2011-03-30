@@ -1,21 +1,20 @@
 /*-------------------- In the name of God ----------------------*\
  
-    libprayertimes 0.2
-    Islamic Prayer Times Calculator
+    libprayertimes 1.0
+    Islamic Prayer Times Calculator library
 		 
 Developed by:
   Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>
 
-Based on a GPL JavaScript code by Hamid Zarrabi-Zadeh
+Based on a LGPL 3.0 JavaScript code by Hamid Zarrabi-Zadeh
 
 ------------------------------------------------------------------
 
-Copyright 2009, Mohammad Ebrahim Mohammadi Panah
+Copyright 2009-2011, Mohammad Ebrahim Mohammadi Panah
 
 This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+modify it under the terms of the GNU Lesser General Public
+License version 3 as published by the Free Software Foundation.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,625 +22,504 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You can get a copy of the GNU General Public License from
-http://www.gnu.org/copyleft/gpl.html
+http://www.gnu.org/copyleft/lgpl.html
 
 ------------- Copyright block of original JS library -------------
 
-PrayTime: The Prayer Times Calculator (ver 1.1)
-Copyright (C) 2007, Hamid Zarrabi-Zadeh
+PrayTimes.js: Prayer Times Calculator (ver 2.1)
+Copyright (C) 2007-2011 PrayTimes.org
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+Developer: Hamid Zarrabi-Zadeh
+License: GNU LGPL v3.0
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+TERMS OF USE:
+	Permission is granted to use this code, with or 
+	without modification, in any website or application 
+	provided that credit is given to the original work 
+	with a link back to PrayTimes.org.
 
-You can get a copy of the GNU General Public License from
-http://www.gnu.org/copyleft/gpl.html
+This program is distributed in the hope that it will 
+be useful, but WITHOUT ANY WARRANTY. 
 
+PLEASE DO NOT REMOVE THIS COPYRIGHT BLOCK.
+ 
 ------------------------ Help and Manual -------------------------
 
-PrayTime User's Manual:
-http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/manual
+User's Manual: 
+http://praytimes.org/manual
 
-Calculating Formulas:
-http://www.cs.uwaterloo.ca/~hzarrabi/praytime/doc/calculation
+Calculation Formulas: 
+http://praytimes.org/calculation
 
 \*--------------------------------------------------------------*/
 
+#include <array>
 #include <cstdio>
 #include <cmath>
 #include <string>
 
-/* -------------------- PrayerTimes Class --------------------- */
+namespace prayertimes
+{
+
+enum
+{
+	VERSION_MAJOR = 1,
+	VERSION_MINOR = 0,
+};
+
+/* ----------------------- Constants ----------------------- */
+
+// Times
+enum Times
+{
+	Imsak,
+	Fajr,
+	Sunrise,
+	Dhuhr,
+	Asr,
+	Sunset,
+	Maghrib,
+	Isha,
+	Midnight,
+
+	TimesCount
+};
+
+enum AsrJuristicsMethod
+{
+	StandardAsr,		// Shafi`i, Maliki, Ja`fari, Hanbali
+	HanafiAsr,
+};
+
+enum MidnightMethod
+{
+	StandardMidnight,   // Mid Sunset to Sunrise
+	JafariMidnight,     // Mid Maghrib to Fajr
+};
+
+// Adjust methods for higher latitudes
+enum HighLatMethod
+{
+	NightMiddle,   // Middle of night
+	AngleBased,    // Angle/60th of night
+	OneSeventh,    // 1/7th of night
+	None,          // No adjustment
+};
+
+// Calculation methods
+enum CalculationMethod
+{
+	MWL,        // Muslim World League
+	ISNA,       // Islamic Society of North America
+	Egypt,      // Egyptian General Authority of Survey
+	Makkah,     // Umm Al-Qura University, Makkah
+	Karachi,    // University of Islamic Sciences, Karachi
+	Jafari,     // Shia Ithna-Ashari, Leva Institute, Qum
+	Tehran,     // Institute of Geophysics, University of Tehran
+	Custom,     // Custom Setting
+
+	CalculationMethodsCount
+};
+
+struct MethodConfig
+{
+	bool   imsak_is_minutes;
+	double imsak;
+	bool   fajr_is_minutes;
+	double fajr;
+	bool   dhuhr_is_minutes;
+	double dhuhr;
+	bool   maghrib_is_minutes;
+	double maghrib;
+	bool   isha_is_minutes;
+	double isha;
+	MidnightMethod midnight_method;
+};
 
 class PrayerTimes
 {
 public:
-	enum
-	{
-		VERSION_MAJOR = 0,
-		VERSION_MINOR = 2,
-	};
-/* --------------------- User Interface ----------------------- */
-/*
-	PrayerTimes(CalculationMethod calc_method = Jafari,
-			JuristicMethod asr_juristic = Shafii,
-			AdjustingMethod adjust_high_lats = MidNight,
-			double dhuhr_minutes = 0)
+	typedef array<double, TimesCount> TimeOffsets;
 
-	get_prayer_times(date, latitude, longitude, timezone, &times)
-	get_prayer_times(year, month, day, latitude, longitude, timezone, &times)
-
-	set_calc_method(method_id)
-	set_asr_method(method_id)
-	set_high_lats_adjust_method(method_id)		// adjust method for higher latitudes
-
-	set_fajr_angle(angle)
-	set_maghrib_angle(angle)
-	set_isha_angle(angle)
-	set_dhuhr_minutes(minutes)		// minutes after mid-day
-	set_maghrib_minutes(minutes)		// minutes after sunset
-	set_isha_minutes(minutes)		// minutes after maghrib
-
-	get_float_time_parts(time, &hours, &minutes)
-	float_time_to_time24(time)
-	float_time_to_time12(time)
-	float_time_to_time12ns(time)
-*/
-
-	// Calculation Methods
-	enum CalculationMethod
-	{
-		Jafari, 	// Ithna Ashari
-		Karachi,	// University of Islamic Sciences, Karachi
-		ISNA,   	// Islamic Society of North America (ISNA)
-		MWL,    	// Muslim World League (MWL)
-		Makkah, 	// Umm al-Qura, Makkah
-		Egypt,  	// Egyptian General Authority of Survey
-		Custom, 	// Custom Setting
-
-		CalculationMethodsCount
-	};
-
-	// Juristic Methods
-	enum JuristicMethod
-	{
-		Shafii,    // Shafii (standard)
-		Hanafi,    // Hanafi
-	};
-
-	// Adjusting Methods for Higher Latitudes
-	enum AdjustingMethod
-	{
-		None,      	// No adjustment
-		MidNight,  	// middle of night
-		OneSeventh,	// 1/7th of night
-		AngleBased,	// angle/60th of night
-	};
-
-	// Time IDs
-	enum TimeID
-	{
-		Fajr,
-		Sunrise,
-		Dhuhr,
-		Asr,
-		Sunset,
-		Maghrib,
-		Isha,
-
-		TimesCount
-	};
-
-/* -------------------- Interface Functions -------------------- */
-
-	PrayerTimes(CalculationMethod calc_method = Jafari,
-			JuristicMethod asr_juristic = Shafii,
-			AdjustingMethod adjust_high_lats = MidNight,
-			double dhuhr_minutes = 0)
-	: calc_method(calc_method)
-	, asr_juristic(asr_juristic)
+	PrayerTimes(CalculationMethod calc_method = MWL,
+			AsrJuristicMethod asr_juristic = StandardAsr,
+			HighLatMethod adjust_high_lats = NightMiddle)
+	: asr_juristic(asr_juristic)
 	, adjust_high_lats(adjust_high_lats)
-	, dhuhr_minutes(dhuhr_minutes)
 	{
-		method_params[Jafari]  = MethodConfig(16.0, false, 4.0, false, 14.0);	// Jafari
-		method_params[Karachi] = MethodConfig(18.0, true,  0.0, false, 18.0);	// Karachi
-		method_params[ISNA]    = MethodConfig(15.0, true,  0.0, false, 15.0);	// ISNA
-		method_params[MWL]     = MethodConfig(18.0, true,  0.0, false, 17.0);	// MWL
-		method_params[Makkah]  = MethodConfig(19.0, true,  0.0, true,  90.0);	// Makkah
-		method_params[Egypt]   = MethodConfig(19.5, true,  0.0, false, 17.5);	// Egypt
-		method_params[Custom]  = MethodConfig(18.0, true,  0.0, false, 17.0);	// Custom
-	}
+		method_params[MWL]     = { true, 10.0, false, 18.0, true, 0, true,  0.0, false, 17.0, StandardMidnight };
+		method_params[ISNA]    = { true, 10.0, false, 15.0, true, 0, true,  0.0, false, 15.0, StandardMidnight };
+		method_params[Egypt]   = { true, 10.0, false, 19.5, true, 0, true,  0.0, false, 17.5, StandardMidnight };
+		method_params[Makkah]  = { true, 10.0, false, 19.0, true, 0, true,  0.0, true,  90.0, StandardMidnight };
+		method_params[Karachi] = { true, 10.0, false, 18.0, true, 0, true,  0.0, false, 18.0, StandardMidnight };
+		method_params[Tehran]  = { true, 10.0, false, 17.7, true, 0, false, 4.5, false, 14.0, JafariMidnight   };
+		method_params[Jafari]  = { true, 10.0, false, 16.0, true, 0, false, 4.0, false, 14.0, JafariMidnight   };
+		method_params[Custom]  = { true, 10.0, false, 15.0, true, 0, true,  0.0, false, 15.0, StandardMidnight };
 
-	/* return prayer times for a given date */
-	void get_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[])
-	{
-		latitude = _latitude;
-		longitude = _longitude;
-		timezone = _timezone;
-		julian_date = get_julian_date(year, month, day) - longitude / (double) (15 * 24);
-		compute_day_times(times);
-	}
-
-	/* return prayer times for a given date */
-	void get_prayer_times(time_t date, double latitude, double longitude, double timezone, double times[])
-	{
-		tm* t = localtime(&date);
-		get_prayer_times(1900 + t->tm_year, t->tm_mon + 1, t->tm_mday, latitude, longitude, timezone, times);
-	}
-
-	/* set the calculation method  */
-	void set_calc_method(CalculationMethod method_id)
-	{
-		calc_method = method_id;
-	}
-
-	/* set the juristic method for Asr */
-	void set_asr_method(JuristicMethod method_id)
-	{
-		asr_juristic = method_id;
-	}
-
-	/* set adjusting method for higher latitudes */
-	void set_high_lats_adjust_method(AdjustingMethod method_id)
-	{
-		adjust_high_lats = method_id;
-	}
-
-	/* set the angle for calculating Fajr */
-	void set_fajr_angle(double angle)
-	{
-		method_params[Custom].fajr_angle = angle;
-		calc_method = Custom;
-	}
-
-	/* set the angle for calculating Maghrib */
-	void set_maghrib_angle(double angle)
-	{
-		method_params[Custom].maghrib_is_minutes = false;
-		method_params[Custom].maghrib_value = angle;
-		calc_method = Custom;
-	}
-
-	/* set the angle for calculating Isha */
-	void set_isha_angle(double angle)
-	{
-		method_params[Custom].isha_is_minutes = false;
-		method_params[Custom].isha_value = angle;
-		calc_method = Custom;
-	}
-
-	/* set the minutes after mid-day for calculating Dhuhr */
-	void set_dhuhr_minutes(double minutes)
-	{
-		dhuhr_minutes = minutes;
-	}
-
-	/* set the minutes after Sunset for calculating Maghrib */
-	void set_maghrib_minutes(double minutes)
-	{
-		method_params[Custom].maghrib_is_minutes = true;
-		method_params[Custom].maghrib_value = minutes;
-		calc_method = Custom;
-	}
-
-	/* set the minutes after Maghrib for calculating Isha */
-	void set_isha_minutes(double minutes)
-	{
-		method_params[Custom].isha_is_minutes = true;
-		method_params[Custom].isha_value = minutes;
-		calc_method = Custom;
-	}
-
-	/* get hours and minutes parts of a float time */
-	static void get_float_time_parts(double time, int& hours, int& minutes)
-	{
-		time = fix_hour(time + 0.5 / 60);		// add 0.5 minutes to round
-		hours = floor(time);
-		minutes = floor((time - hours) * 60);
-	}
-
-	/* convert float hours to 24h format */
-	static std::string float_time_to_time24(double time)
-	{
-		if (isnan(time))
-			return std::string();
-		int hours, minutes;
-		get_float_time_parts(time, hours, minutes);
-		return two_digits_format(hours) + ':' + two_digits_format(minutes);
-	}
-
-	/* convert float hours to 12h format */
-	static std::string float_time_to_time12(double time, bool no_suffix = false)
-	{
-		if (isnan(time))
-			return std::string();
-		int hours, minutes;
-		get_float_time_parts(time, hours, minutes);
-		const char* suffix = hours >= 12 ? " PM" : " AM";
-		hours = (hours + 12 - 1) % 12 + 1;
-		return int_to_string(hours) + ':' + two_digits_format(minutes) + (no_suffix ? "" : suffix);
-	}
-
-	/* convert float hours to 12h format with no suffix */
-	static std::string float_time_to_time12ns(double time)
-	{
-		return float_time_to_time12(time, true);
-	}
-
-/* ---------------------- Time-Zone Functions ----------------------- */
-
-	/* compute local time-zone for a specific date */
-	static double get_effective_timezone(time_t local_time)
-	{
-		tm* tmp = localtime(&local_time);
-		tmp->tm_isdst = 0;
-		time_t local = mktime(tmp);
-		tmp = gmtime(&local_time);
-		tmp->tm_isdst = 0;
-		time_t gmt = mktime(tmp);
-		return (local - gmt) / 3600.0;
-	}
-
-	/* compute local time-zone for a specific date */
-	static double get_effective_timezone(int year, int month, int day)
-	{
-		tm date = { 0 };
-		date.tm_year = year - 1900;
-		date.tm_mon = month - 1;
-		date.tm_mday = day;
-		date.tm_isdst = -1;		// determine it yourself from system
-		time_t local = mktime(&date);		// seconds since midnight Jan 1, 1970
-		return get_effective_timezone(local);
-	}
-
-private:
-/* ------------------- Calc Method Parameters -------------------- */
-
-	struct MethodConfig
-	{
-		MethodConfig()
-		{
-		}
-
-		MethodConfig(double fajr_angle,
-				bool maghrib_is_minutes,
-				double maghrib_value,
-				bool isha_is_minutes,
-				double isha_value)
-		: fajr_angle(fajr_angle)
-		, maghrib_is_minutes(maghrib_is_minutes)
-		, maghrib_value(maghrib_value)
-		, isha_is_minutes(isha_is_minutes)
-		, isha_value(isha_value)
-		{
-		}
-
-		double fajr_angle;
-		bool   maghrib_is_minutes;
-		double maghrib_value;		// angle or minutes
-		bool   isha_is_minutes;
-		double isha_value;		// angle or minutes
-	};
-
-/* ---------------------- Calculation Functions ----------------------- */
-
-	/* References: */
-	/* http://www.ummah.net/astronomy/saltime   */
-	/* http://aa.usno.navy.mil/faq/docs/SunApprox.html */
-
-	typedef std::pair<double, double> DoublePair;
-
-	/* compute declination angle of sun and equation of time */
-	DoublePair sun_position(double jd)
-	{
-		double d = jd - 2451545.0;
-		double g = fix_angle(357.529 + 0.98560028 * d);
-		double q = fix_angle(280.459 + 0.98564736 * d);
-		double l = fix_angle(q + 1.915 * dsin(g) + 0.020 * dsin(2 * g));
-
-		// double r = 1.00014 - 0.01671 * dcos(g) - 0.00014 * dcos(2 * g);
-		double e = 23.439 - 0.00000036 * d;
-
-		double dd = darcsin(dsin(e) * dsin(l));
-		double ra = darctan2(dcos(e) * dsin(l), dcos(l)) / 15.0;
-		ra = fix_hour(ra);
-		double eq_t = q / 15.0 - ra;
-
-		return DoublePair(dd, eq_t);
-	}
-
-	/* compute equation of time */
-	double equation_of_time(double jd)
-	{
-		return sun_position(jd).second;
-	}
-
-	/* compute declination angle of sun */
-	double sun_declination(double jd)
-	{
-		return sun_position(jd).first;
-	}
-
-	/* compute mid-day (Dhuhr, Zawal) time */
-	double compute_mid_day(double _t)
-	{
-		double t = equation_of_time(julian_date + _t);
-		double z = fix_hour(12 - t);
-		return z;
-	}
-
-	/* compute time for a given angle G */
-	double compute_time(double g, double t)
-	{
-		double d = sun_declination(julian_date + t);
-		double z = compute_mid_day(t);
-		double v = 1.0 / 15.0 * darccos((-dsin(g) - dsin(d) * dsin(latitude)) / (dcos(d) * dcos(latitude)));
-		return z + (g > 90.0 ? - v :  v);
-	}
-
-	/* compute the time of Asr */
-	double compute_asr(int step, double t)  // Shafii: step=1, Hanafi: step=2
-	{
-		double d = sun_declination(julian_date + t);
-		double g = -darccot(step + dtan(fabs(latitude - d)));
-		return compute_time(g, t);
-	}
-
-/* ---------------------- Compute Prayer Times ----------------------- */
-
-	// array parameters must be at least of size TimesCount
-
-	/* compute prayer times at given julian date */
-	void compute_times(double times[])
-	{
-		day_portion(times);
-
-		times[Fajr]    = compute_time(180.0 - method_params[calc_method].fajr_angle, times[Fajr]);
-		times[Sunrise] = compute_time(180.0 - 0.833, times[Sunrise]);
-		times[Dhuhr]   = compute_mid_day(times[Dhuhr]);
-		times[Asr]     = compute_asr(1 + asr_juristic, times[Asr]);
-		times[Sunset]  = compute_time(0.833, times[Sunset]);
-		times[Maghrib] = compute_time(method_params[calc_method].maghrib_value, times[Maghrib]);
-		times[Isha]    = compute_time(method_params[calc_method].isha_value, times[Isha]);
-	}
-
-
-	/* compute prayer times at given julian date */
-	void compute_day_times(double times[])
-	{
-		double default_times[] = { 5, 6, 12, 13, 18, 18, 18 };		// default times
 		for (int i = 0; i < TimesCount; ++i)
-			times[i] = default_times[i];
+			times_offset[i] = 0;
 
-		for (int i = 0; i < NUM_ITERATIONS; ++i)
-			compute_times(times);
-
-		adjust_times(times);
+		set_calc_method(calc_method);
 	}
 
-
-	/* adjust times in a prayer time array */
-	void adjust_times(double times[])
+	// Get current calculation method
+	CalculationMethod get_calc_method()
 	{
-		for (int i = 0; i < TimesCount; ++i)
-			times[i] += timezone - longitude / 15.0;
-		times[Dhuhr] += dhuhr_minutes / 60.0;		// Dhuhr
-		if (method_params[calc_method].maghrib_is_minutes)		// Maghrib
-			times[Maghrib] = times[Sunset] + method_params[calc_method].maghrib_value / 60.0;
-		if (method_params[calc_method].isha_is_minutes)		// Isha
-			times[Isha] = times[Maghrib] + method_params[calc_method].isha_value / 60.0;
-
-		if (adjust_high_lats != None)
-			adjust_high_lat_times(times);
+		return calc_method;
 	}
 
-	/* adjust Fajr, Isha and Maghrib for locations in higher latitudes */
-	void adjust_high_lat_times(double times[])
+	// Set the calculation method
+	void set_calc_method(CalculationMethod new_calc_method)
 	{
-		double night_time = time_diff(times[Sunset], times[Sunrise]);		// sunset to sunrise
-
-		// Adjust Fajr
-		double fajr_diff = night_portion(method_params[calc_method].fajr_angle) * night_time;
-		if (isnan(times[Fajr]) || time_diff(times[Fajr], times[Sunrise]) > fajr_diff)
-			times[Fajr] = times[Sunrise] - fajr_diff;
-
-		// Adjust Isha
-		double isha_angle = method_params[calc_method].isha_is_minutes ? 18.0 : method_params[calc_method].isha_value;
-		double isha_diff = night_portion(isha_angle) * night_time;
-		if (isnan(times[Isha]) || time_diff(times[Sunset], times[Isha]) > isha_diff)
-			times[Isha] = times[Sunset] + isha_diff;
-
-		// Adjust Maghrib
-		double maghrib_angle = method_params[calc_method].maghrib_is_minutes ? 4.0 : method_params[calc_method].maghrib_value;
-		double maghrib_diff = night_portion(maghrib_angle) * night_time;
-		if (isnan(times[Maghrib]) || time_diff(times[Sunset], times[Maghrib]) > maghrib_diff)
-			times[Maghrib] = times[Sunset] + maghrib_diff;
+		calc_method = new_calc_method;
+		config = method_params[calc_method % CalculationMethodsCount];		// Mod is for safety in case of invalid input
 	}
 
-
-	/* the night portion used for adjusting times in higher latitudes */
-	double night_portion(double angle)
+	// Get current time offsets
+	TimeOffsets get_time_offsets()
 	{
-		switch (adjust_high_lats)
-		{
-			case AngleBased:
-				return angle / 60.0;
-			case MidNight:
-				return 1.0 / 2.0;
-			case OneSeventh:
-				return 1.0 / 7.0;
-			default:
-				// Just to return something!
-				// In original library nothing was returned
-				// Maybe I should throw an exception
-				// It must be impossible to reach here
-				return 0;
-		}
+		return time_offset;
 	}
 
-	/* convert hours to day portions  */
-	void day_portion(double times[])
+	// Set time offsets
+	void set_time_offsets(Times time, double new_offset)
 	{
-		for (int i = 0; i < TimesCount; ++i)
-			times[i] /= 24.0;
+		time_offsets[time] = new_offset;
 	}
 
-/* ---------------------- Misc Functions ----------------------- */
-
-	/* compute the difference between two times  */
-	static double time_diff(double time1, double time2)
+	void set_time_offsets(TimeOffsets new_time_offsets)
 	{
-		return fix_hour(time2 - time1);
+		times_offset = new_time_offsets;
 	}
 
-	static std::string int_to_string(int num)
+	// Get current setting
+	MethodConfig get_config()
 	{
-		char tmp[16];
-		tmp[0] = '\0';
-		sprintf(tmp, "%d", num);
-		return std::string(tmp);
+		return config;
 	}
 
-	/* add a leading 0 if necessary */
-	static std::string two_digits_format(int num)
-	{
-		char tmp[16];
-		tmp[0] = '\0';
-		sprintf(tmp, "%2.2d", num);
-		return std::string(tmp);
-	}
+	// return prayer times for a given date
+	getTimes: function(date, coords, timezone, dst, format) {
+		lat = 1* coords[0]; 
+		lng = 1* coords[1];
+		elv = coords[2] ? 1* coords[2] : 0;
+		timeFormat = format || timeFormat;
+		if (date.constructor === Date)
+			date = [date.getFullYear(), date.getMonth()+ 1, date.getDate()];
+		timeZone = 1* timezone+ (dst ? 1 : 0);
+		jDate = this.julian(date[0], date[1], date[2])- lng/ (15* 24);
+		
+		return this.computeTimes();
+	},
 
-/* ---------------------- Julian Date Functions ----------------------- */
 
-	/* calculate julian date from a calendar date */
-	double get_julian_date(int year, int month, int day)
-	{
-		if (month <= 2)
-		{
+	// convert float time to the given format (see timeFormats)
+	getFormattedTime: function(time, format, suffixes) {
+		if (isNaN(time))
+			return InvalidTime;
+		if (format == 'Float') return time;
+		suffixes = suffixes || timeSuffixes;
+
+		time = DMath.fixHour(time+ 0.5/ 60);  // add 0.5 minutes to round
+		var hours = Math.floor(time); 
+		var minutes = Math.floor((time- hours)* 60);
+		var suffix = (format == '12h') ? suffixes[hours < 12 ? 0 : 1] : '';
+		hours = (format == '24h') ? this.twoDigitsFormat(hours) : ((hours+ 12 -1)% 12+ 1);
+		return hours+ ':'+ this.twoDigitsFormat(minutes)+ (suffix ? ' '+ suffix : '');
+	},
+
+
+	//---------------------- Calculation Functions -----------------------
+
+
+	// compute mid-day time
+	midDay: function(time) {
+		var eqt = this.sunPosition(jDate+ time).equation;
+		var noon = DMath.fixHour(12- eqt);
+		return noon;
+	},
+
+
+	// compute the time at which sun reaches a specific angle below horizon
+	sunAngleTime: function(angle, time, direction) {
+		var decl = this.sunPosition(jDate+ time).declination;
+		var noon = this.midDay(time);
+		var t = 1/15* DMath.arccos((-DMath.sin(angle)- DMath.sin(decl)* DMath.sin(lat))/ 
+				(DMath.cos(decl)* DMath.cos(lat)));
+		return noon+ (direction == 'ccw' ? -t : t);
+	},
+
+
+	// compute asr time 
+	asrTime: function(factor, time) { 
+		var decl = this.sunPosition(jDate+ time).declination;
+		var angle = -DMath.arccot(factor+ DMath.tan(Math.abs(lat- decl)));
+		return this.sunAngleTime(angle, time);
+	},
+
+
+	// compute declination angle of sun and equation of time
+	// Ref: http://aa.usno.navy.mil/faq/docs/SunApprox.php
+	sunPosition: function(jd) {
+		var D = jd - 2451545.0;
+		var g = DMath.fixAngle(357.529 + 0.98560028* D);
+		var q = DMath.fixAngle(280.459 + 0.98564736* D);
+		var L = DMath.fixAngle(q + 1.915* DMath.sin(g) + 0.020* DMath.sin(2*g));
+
+		var R = 1.00014 - 0.01671* DMath.cos(g) - 0.00014* DMath.cos(2*g);
+		var e = 23.439 - 0.00000036* D;
+
+		var RA = DMath.arctan2(DMath.cos(e)* DMath.sin(L), DMath.cos(L))/ 15;
+		var eqt = q/15 - DMath.fixHour(RA);
+		var decl = DMath.arcsin(DMath.sin(e)* DMath.sin(L));
+
+		return {declination: decl, equation: eqt};
+	},
+
+
+	// convert Gregorian date to Julian day
+	// Ref: Astronomical Algorithms by Jean Meeus
+	julian: function(year, month, day) {
+		if (month <= 2) {
 			year -= 1;
 			month += 12;
-		}
+		};
+		var A = Math.floor(year/ 100);
+		var B = 2- A+ Math.floor(A/ 4);
 
-		double a = floor(year / 100.0);
-		double b = 2 - a + floor(a / 4.0);
+		var JD = Math.floor(365.25* (year+ 4716))+ Math.floor(30.6001* (month+ 1))+ day+ B- 1524.5;
+		return JD;
+	},
 
-		return floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + day + b - 1524.5;
+	
+	//---------------------- Compute Prayer Times -----------------------
+
+
+	// compute prayer times at given julian date
+	computePrayerTimes: function(times) {
+		times = this.dayPortion(times);
+		var params  = setting;
+		
+		var imsak   = this.sunAngleTime(this.eval(params.imsak), times.imsak, 'ccw');
+		var fajr    = this.sunAngleTime(this.eval(params.fajr), times.fajr, 'ccw');
+		var sunrise = this.sunAngleTime(this.riseSetAngle(), times.sunrise, 'ccw');  
+		var dhuhr   = this.midDay(times.dhuhr);
+		var asr     = this.asrTime(this.asrFactor(params.asr), times.asr);
+		var sunset  = this.sunAngleTime(this.riseSetAngle(), times.sunset);;
+		var maghrib = this.sunAngleTime(this.eval(params.maghrib), times.maghrib);
+		var isha    = this.sunAngleTime(this.eval(params.isha), times.isha);
+
+		return {
+			imsak: imsak, fajr: fajr, sunrise: sunrise, dhuhr: dhuhr, 
+			asr: asr, sunset: sunset, maghrib: maghrib, isha: isha
+		};
+	},
+
+
+	// compute prayer times 
+	computeTimes: function() {
+		// default times
+		var times = { 
+			imsak: 5, fajr: 5, sunrise: 6, dhuhr: 12, 
+			asr: 13, sunset: 18, maghrib: 18, isha: 18
+		};
+
+		// main iterations
+		for (var i=1 ; i<=numIterations ; i++) 
+			times = this.computePrayerTimes(times);
+
+		times = this.adjustTimes(times);
+		
+		// add midnight time
+		times.midnight = (setting.midnight == 'Jafari') ? 
+				times.maghrib+ this.timeDiff(times.maghrib, times.fajr)/ 2 :
+				times.sunset+ this.timeDiff(times.sunset, times.sunrise)/ 2;
+
+		times = this.tuneTimes(times);
+		return this.modifyFormats(times);
+	},
+
+
+	// adjust times 
+	adjustTimes: function(times) {
+		var params = setting;
+		for (var i in times)
+			times[i] += timeZone- lng/ 15;
+			
+		if (params.highLats != 'None')
+			times = this.adjustHighLats(times);
+			
+		if (this.isMin(params.imsak))
+			times.imsak = times.fajr- this.eval(params.imsak)/ 60;
+		if (this.isMin(params.maghrib))
+			times.maghrib = times.sunset+ this.eval(params.maghrib)/ 60;
+		if (this.isMin(params.isha))
+			times.isha = times.maghrib+ this.eval(params.isha)/ 60;
+		times.dhuhr += this.eval(params.dhuhr)/ 60; 
+
+		return times;
+	},
+
+
+	// get asr shadow factor
+	asrFactor: function(asrParam) {
+		var factor = {Standard: 1, Hanafi: 2}[asrParam];
+		return factor || this.eval(asrParam);
+	},
+
+
+	// return sun angle for sunset/sunrise
+	riseSetAngle: function() {
+		//var earthRad = 6371009; // in meters
+		//var angle = DMath.arccos(earthRad/(earthRad+ elv));
+		var angle = 0.0347* Math.sqrt(elv); // an approximation
+		return 0.833+ angle;
+	},
+
+
+	// apply offsets to the times
+	tuneTimes: function(times) {
+		for (var i in times)
+			times[i] += offset[i]/ 60; 
+		return times;
+	},
+
+
+	// convert times to given time format
+	modifyFormats: function(times) {
+		for (var i in times)
+			times[i] = this.getFormattedTime(times[i], timeFormat); 
+		return times;
+	},
+
+
+	// adjust times for locations in higher latitudes
+	adjustHighLats: function(times) {
+		var params = setting;
+		var nightTime = this.timeDiff(times.sunset, times.sunrise); 
+
+		times.imsak = this.adjustHLTime(times.imsak, times.sunrise, this.eval(params.imsak), nightTime, 'ccw');
+		times.fajr  = this.adjustHLTime(times.fajr, times.sunrise, this.eval(params.fajr), nightTime, 'ccw');
+		times.isha  = this.adjustHLTime(times.isha, times.sunset, this.eval(params.isha), nightTime);
+		times.maghrib = this.adjustHLTime(times.maghrib, times.sunset, this.eval(params.maghrib), nightTime);
+		
+		return times;
+	},
+
+	// adjust a time for higher latitudes
+	adjustHLTime: function(time, base, angle, night, direction) {
+		var portion = this.nightPortion(angle, night);
+		var timeDiff = (direction == 'ccw') ? 
+			this.timeDiff(time, base):
+			this.timeDiff(base, time);
+		if (isNaN(time) || timeDiff > portion) 
+			time = base+ (direction == 'ccw' ? -portion : portion);
+		return time;
+	},
+
+	// the night portion used for adjusting times in higher latitudes
+	nightPortion: function(angle, night) {
+		var method = setting.highLats;
+		var portion = 1/2 // MidNight
+		if (method == 'AngleBased')
+			portion = 1/60* angle;
+		if (method == 'OneSeventh')
+			portion = 1/7;
+		return portion* night;
+	},
+
+
+	// convert hours to day portions 
+	dayPortion: function(times) {
+		for (var i in times)
+			times[i] /= 24;
+		return times;
+	},
+
+
+
+	//---------------------- Misc Functions -----------------------
+
+
+	// convert given string into a number
+	eval: function(str) {
+		return 1* (str+ '').split(/[^0-9.+-]/)[0];
+	},
+
+
+	// detect if input contains 'min'
+	isMin: function(arg) {
+		return (arg+ '').indexOf('min') != -1;
+	},
+
+
+	// compute the difference between two times 
+	timeDiff: function(time1, time2) {
+		return DMath.fixHour(time2- time1);
+	},
+
+
+	// add a leading 0 if necessary
+	twoDigitsFormat: function(num) {
+		return (num <10) ? '0'+ num : num;
 	}
+	
+}
+}
 
-	/* convert a calendar date to julian date (second method) */
-	double calc_julian_date(int year, int month, int day)
-	{
-		double j1970 = 2440588.0;
-		tm date = { 0 };
-		date.tm_year = year - 1900;
-		date.tm_mon = month - 1;
-		date.tm_mday = day;
-		date.tm_isdst = -1;		// determine it yourself from system
-		time_t ms = mktime(&date);		// seconds since midnight Jan 1, 1970
-		double days = floor(ms / (double) (60 * 60 * 24));
-		return j1970 + days - 0.5;
+
+
+//---------------------- Degree-Based Math Class -----------------------
+
+
+var DMath = {
+
+	dtr: function(d) { return (d * Math.PI) / 180.0; },
+	rtd: function(r) { return (r * 180.0) / Math.PI; },
+
+	sin: function(d) { return Math.sin(this.dtr(d)); },
+	cos: function(d) { return Math.cos(this.dtr(d)); },
+	tan: function(d) { return Math.tan(this.dtr(d)); },
+
+	arcsin: function(d) { return this.rtd(Math.asin(d)); },
+	arccos: function(d) { return this.rtd(Math.acos(d)); },
+	arctan: function(d) { return this.rtd(Math.atan(d)); },
+
+	arccot: function(x) { return this.rtd(Math.atan(1/x)); },
+	arctan2: function(y, x) { return this.rtd(Math.atan2(y, x)); },
+
+	fixAngle: function(a) { return this.fix(a, 360); },
+	fixHour:  function(a) { return this.fix(a, 24 ); },
+
+	fix: function(a, b) { 
+		a = a- b* (Math.floor(a/ b));
+		return (a < 0) ? a+ b : a;
 	}
+}
 
-/* ---------------------- Trigonometric Functions ----------------------- */
+/* ---------------------- Public Variables --------------------- */
 
-	/* degree sin */
-	static double dsin(double d)
-	{
-		return sin(deg2rad(d));
-	}
-
-	/* degree cos */
-	static double dcos(double d)
-	{
-		return cos(deg2rad(d));
-	}
-
-	/* degree tan */
-	static double dtan(double d)
-	{
-		return tan(deg2rad(d));
-	}
-
-	/* degree arcsin */
-	static double darcsin(double x)
-	{
-		return rad2deg(asin(x));
-	}
-
-	/* degree arccos */
-	static double darccos(double x)
-	{
-		return rad2deg(acos(x));
-	}
-
-	/* degree arctan */
-	static double darctan(double x)
-	{
-		return rad2deg(atan(x));
-	}
-
-	/* degree arctan2 */
-	static double darctan2(double y, double x)
-	{
-		return rad2deg(atan2(y, x));
-	}
-
-	/* degree arccot */
-	static double darccot(double x)
-	{
-		return rad2deg(atan(1.0 / x));
-	}
-
-	/* degree to radian */
-	static double deg2rad(double d)
-	{
-		return d * M_PI / 180.0;
-	}
-
-	/* radian to degree */
-	static double rad2deg(double r)
-	{
-		return r * 180.0 / M_PI;
-	}
-
-	/* range reduce angle in degrees. */
-	static double fix_angle(double a)
-	{
-		a = a - 360.0 * floor(a / 360.0);
-		a = a < 0.0 ? a + 360.0 : a;
-		return a;
-	}
-
-	/* range reduce hours to 0..23 */
-	static double fix_hour(double a)
-	{
-		a = a - 24.0 * floor(a / 24.0);
-		a = a < 0.0 ? a + 24.0 : a;
-		return a;
-	}
+	std::array<MethodConfig, CalculationMethodsCount> method_params;
 
 private:
 /* ---------------------- Private Variables -------------------- */
 
-	MethodConfig method_params[CalculationMethodsCount];
-
+	MethodConfig config;
 	CalculationMethod calc_method;		// caculation method
-	JuristicMethod asr_juristic;		// Juristic method for Asr
-	AdjustingMethod adjust_high_lats;	// adjusting method for higher latitudes
-	double dhuhr_minutes;		// minutes after mid-day for Dhuhr
+	AsrJuristicMethod asr_juristic;		// Juristic method for Asr
+	HighLatMethod adjust_high_lats;		// adjusting method for higher latitudes
+
+	TimeOffsets time_offsets;
 
 	double latitude;
 	double longitude;
+	double elevation;
 	double timezone;
 	double julian_date;
 
 /* --------------------- Technical Settings -------------------- */
 
-	static const int NUM_ITERATIONS = 1;		// number of iterations needed to compute times
+	static const int NUM_ITERATIONS = 1;		// Number of iterations needed to compute times
 };
+
+}

@@ -1,7 +1,7 @@
 /*-------------------- In the name of God ----------------------*\
 
     PrayerTimes 0.3
-    Islamic Prayer Times Calculator
+    Islamic Prayer Times Calculator C++ library
 
 Developed by:
   Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>
@@ -37,8 +37,9 @@ http://www.gnu.org/copyleft/gpl.html
 #define PROG_NAME_FRIENDLY "PrayerTimes"
 #define PROG_VERSION "0.3"
 
-static const char* TimeName[] =
+static const char* const TimeName[] =
 {
+	"Imsak",
 	"Fajr",
 	"Sunrise",
 	"Dhuhr",
@@ -46,6 +47,7 @@ static const char* TimeName[] =
 	"Sunset",
 	"Maghrib",
 	"Isha",
+	"Midnight",
 };
 
 void print_help(FILE* f)
