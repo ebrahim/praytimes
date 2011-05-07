@@ -1,6 +1,6 @@
 /*-------------------- In the name of God ----------------------*\
 
-    PrayerTimes 0.3
+    PrayerTimes 1.0
     Islamic prayer times calculator
 
 Developed by:
@@ -8,7 +8,7 @@ Developed by:
 
 ------------------------------------------------------------------
 
-Copyright 2009, Mohammad Ebrahim Mohammadi Panah
+Copyright 2011, Ebrahim Mohammadi
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -25,6 +25,7 @@ http://www.gnu.org/copyleft/gpl.html
 
 \*--------------------------------------------------------------*/
 
+#include <cstdio>
 #include <ctime>
 #include <cmath>
 #include <cstring>
@@ -35,7 +36,9 @@ http://www.gnu.org/copyleft/gpl.html
 
 #define PROG_NAME "prayertimes"
 #define PROG_NAME_FRIENDLY "PrayerTimes"
-#define PROG_VERSION "0.3"
+#define PROG_VERSION "1.0"
+
+using prayertimes::PrayerTimes;
 
 static const char* const TimeName[] =
 {
@@ -50,58 +53,74 @@ static const char* const TimeName[] =
 	"Midnight",
 };
 
+static const char* const CalculationMethodName[] =
+{
+	"MWL",
+	"ISNA",
+	"Egypt",
+	"Makkah",
+	"Karachi",
+	"Jafari",
+	"Tehran",
+	"Custom",
+};
+
 void print_help(FILE* f)
 {
 	fputs(PROG_NAME_FRIENDLY " " PROG_VERSION "\n\n", stderr);
 	fputs("Usage: " PROG_NAME " options...\n"
 	      "\n"
-		  " Options\n"
+	      " Options\n"
 	      "    --help                      -h  you're reading it\n"
 	      "    --version                   -v  prints name and version, then exits\n"
 	      "    --date arg                  -d  get prayer times for arbitrary date\n"
 	      "    --timezone arg              -z  get prayer times for arbitrary timezone\n"
 	      "  * --latitude arg              -l  latitude of desired location\n"
 	      "  * --longitude arg             -n  longitude of desired location\n"
+	      "    --elevation arg             -e  elevation of desired location\n"
 	      "    --calc-method arg           -c  select prayer time calculation method\n"
-	      "    --asr-juristic-method arg   -a  select Juristic method for calculating Asr prayer time\n"
+	      "    --asr-juristics-method arg  -a  select Juristic method for calculating Asr prayer time\n"
 	      "    --high-lats-method arg      -i  select adjusting method for higher latitude\n"
+	      " ** --imsak-minutes arg             minutes before Fajr for calculating Imsak time\n"
 	      "    --dhuhr-minutes arg             minutes after mid-way for calculating Dhuhr prayer time\n"
 	      " ** --maghrib-minutes arg           minutes after sunset for calculating Maghrib prayer time\n"
 	      " ** --isha-minutes arg              minutes after Maghrib for calculating Isha prayer time\n"
+	      " ** --imsak-angle arg               angle for calculating Imsak time\n"
 	      " ** --fajr-angle arg                angle for calculating Fajr prayer time\n"
 	      " ** --maghrib-angle arg             angle for calculating Maghrib prayer time\n"
 	      " ** --isha-angle arg                angle for calculating Isha prayer time\n"
-		  "\n"
-		  "  * These options are required\n"
-		  " ** By providing any of these options the calculation method is set to custom\n"
 	      "\n"
-		  " Possible arguments for --calc-method\n"
-	      "    jafari        Ithna Ashari\n"
-	      "    karachi       University of Islamic Sciences, Karachi\n"
-	      "    isna          Islamic Society of North America (ISNA)\n"
-	      "    mwl           Muslim World League (MWL)\n"
-	      "    makkah        Umm al-Qura, Makkah\n"
-	      "    egypt         Egyptian General Authority of Survey\n"
-	      "    custom        Custom Setting\n"
-          "\n"
-		  " Possible arguments for --asr-juristic-method\n"
-	      "    shafii        Shafii (standard)\n"
+	      "  * These options are required\n"
+	      " ** By providing any of these options the calculation method is set to custom\n"
+	      "\n"
+	      " Possible arguments for --calc-method\n"
+	      "    mwl         Muslim World League\n"
+	      "    isna        Islamic Society of North America\n"
+	      "    jafari      Shia Ithna-Ashari, Leva Institute, Qum\n"
+	      "    karachi     University of Islamic Sciences, Karachi\n"
+	      "    makkah      Umm Al-Qura University, Makkah\n"
+	      "    egypt       Egyptian General Authority of Survey\n"
+	      "    tehran      Institute of Geophysics, University of Tehran\n"
+	      "    custom      Custom Setting\n"
+	      "\n"
+	      " Possible arguments for --asr-juristics-method\n"
+	      "    standard      Shafi`i, Maliki, Ja`fari, Hanbali\n"
 	      "    hanafi        Hanafi\n"
-          "\n"
-		  " Possible arguments for --high-lats-method\n"
+	      "\n"
+	      " Possible arguments for --high-lats-method\n"
 	      "    none          No adjustment\n"
-	      "    midnight      middle of night\n"
+	      "    midnight      Middle of night\n"
 	      "    oneseventh    1/7th of night\n"
-	      "    anglebased    angle/60th of night\n"
-		  , stderr);
-               
+	      "    anglebased    Angle/60th of night\n"
+	      , stderr);
 }              
 
 int main(int argc, char* argv[])
 {
 	PrayerTimes prayer_times;
-	double latitude = NAN;		// 35.7061
-	double longitude = NAN;		// 51.4358
+	double latitude = NAN;
+	double longitude = NAN;
+	double elevation = 0;
 	time_t date = time(NULL);
 	double timezone = NAN;
 
@@ -110,36 +129,41 @@ int main(int argc, char* argv[])
 	{
 		static option long_options[] =
 		{
-			{ "help",                no_argument,       NULL, 'h' },
-			{ "version",             no_argument,       NULL, 'v' },
-			{ "date",                required_argument, NULL, 'd' },
-			{ "timezone",            required_argument, NULL, 'z' },
-			{ "latitude",            required_argument, NULL, 'l' },
-			{ "longitude",           required_argument, NULL, 'n' },
-			{ "calc-method",         required_argument, NULL, 'c' },
-			{ "asr-juristic-method", required_argument, NULL, 'a' },
-			{ "high-lats-method",    required_argument, NULL, 'i' },
-			{ "dhuhr-minutes",       required_argument, NULL, 0   },
-			{ "maghrib-minutes",     required_argument, NULL, 0   },
-			{ "isha-minutes",        required_argument, NULL, 0   },
-			{ "fajr-angle",          required_argument, NULL, 0   },
-			{ "maghrib-angle",       required_argument, NULL, 0   },
-			{ "isha-angle",          required_argument, NULL, 0   },
+			{ "help",                 no_argument,       NULL, 'h' },
+			{ "version",              no_argument,       NULL, 'v' },
+			{ "date",                 required_argument, NULL, 'd' },
+			{ "timezone",             required_argument, NULL, 'z' },
+			{ "latitude",             required_argument, NULL, 'l' },
+			{ "longitude",            required_argument, NULL, 'n' },
+			{ "elevation",            required_argument, NULL, 'n' },
+			{ "calc-method",          required_argument, NULL, 'c' },
+			{ "asr-juristics-method", required_argument, NULL, 'a' },
+			{ "high-lats-method",     required_argument, NULL, 'i' },
+			{ "imsak-minutes",        required_argument, NULL, 0   },
+			{ "dhuhr-minutes",        required_argument, NULL, 0   },
+			{ "maghrib-minutes",      required_argument, NULL, 0   },
+			{ "isha-minutes",         required_argument, NULL, 0   },
+			{ "imsak-angle",          required_argument, NULL, 0   },
+			{ "fajr-angle",           required_argument, NULL, 0   },
+			{ "maghrib-angle",        required_argument, NULL, 0   },
+			{ "isha-angle",           required_argument, NULL, 0   },
 			{ 0, 0, 0, 0 }
 		};
 
 		enum	// long options missing a short form
 		{
-			DHUHR_MINUTES = 9,
+			IMSAK_MINUTES = 10,
+			DHUHR_MINUTES,
 			MAGHRIB_MINUTES,
 			ISHA_MINUTES,
+			IMSAK_ANGLE,
 			FAJR_ANGLE,
 			MAGHRIB_ANGLE,
 			ISHA_ANGLE,
 		};
 
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "hvd:z:l:n:c:a:i:", long_options, &option_index);
+		int c = getopt_long(argc, argv, "hvd:z:l:n:e:c:a:i:", long_options, &option_index);
 
 		if (c == -1)
 			break;		// Last option
@@ -161,23 +185,29 @@ int main(int argc, char* argv[])
 				}
 				switch (option_index)
 				{
+					case IMSAK_MINUTES:
+						prayer_times.set_minutes(prayertimes::Imsak, arg);
+						break;
 					case DHUHR_MINUTES:
-						prayer_times.set_dhuhr_minutes(arg);
+						prayer_times.set_minutes(prayertimes::Dhuhr, arg);
 						break;
 					case MAGHRIB_MINUTES:
-						prayer_times.set_maghrib_minutes(arg);
+						prayer_times.set_minutes(prayertimes::Maghrib, arg);
 						break;
 					case ISHA_MINUTES:
-						prayer_times.set_isha_minutes(arg);
+						prayer_times.set_minutes(prayertimes::Isha, arg);
+						break;
+					case IMSAK_ANGLE:
+						prayer_times.set_angle(prayertimes::Imsak, arg);
 						break;
 					case FAJR_ANGLE:
-						prayer_times.set_fajr_angle(arg);
+						prayer_times.set_angle(prayertimes::Fajr, arg);
 						break;
 					case MAGHRIB_ANGLE:
-						prayer_times.set_maghrib_angle(arg);
+						prayer_times.set_angle(prayertimes::Maghrib, arg);
 						break;
 					case ISHA_ANGLE:
-						prayer_times.set_isha_angle(arg);
+						prayer_times.set_angle(prayertimes::Isha, arg);
 						break;
 					default:
 						fprintf(stderr, "Error: Invalid command line option\n");
@@ -222,47 +252,47 @@ int main(int argc, char* argv[])
 					return 2;
 				}
 				break;
-			case 'c':		// --calc-method
-				if (strcmp(optarg, "jafari") == 0)
-					prayer_times.set_calc_method(PrayerTimes::Jafari);
-				else if (strcmp(optarg, "karachi") == 0)
-					prayer_times.set_calc_method(PrayerTimes::Karachi);
-				else if (strcmp(optarg, "isna") == 0)
-					prayer_times.set_calc_method(PrayerTimes::ISNA);
-				else if (strcmp(optarg, "mwl") == 0)
-					prayer_times.set_calc_method(PrayerTimes::MWL);
-				else if (strcmp(optarg, "makkah") == 0)
-					prayer_times.set_calc_method(PrayerTimes::Makkah);
-				else if (strcmp(optarg, "egypt") == 0)
-					prayer_times.set_calc_method(PrayerTimes::Egypt);
-				else if (strcmp(optarg, "custom") == 0)
-					prayer_times.set_calc_method(PrayerTimes::Custom);
-				else
+			case 'e':		// --elevation
+				if (sscanf(optarg, "%lf", &elevation) != 1)
 				{
-					fprintf(stderr, "Error: Unknown method '%s'\n", optarg);
+					fprintf(stderr, "Error: Invalid elevation '%s'\n", optarg);
 					return 2;
 				}
 				break;
-			case 'a':		// --asr-juristic-method
-				if (strcmp(optarg, "shafii") == 0)
-					prayer_times.set_asr_method(PrayerTimes::Shafii);
+			case 'c':		// --calc-method
+				int i;
+				for (i = 0; i < prayertimes::CalculationMethodsCount; ++i)
+					if (strcasecmp(optarg, CalculationMethodName[i]) == 0)
+					{
+						prayer_times.set_calc_method(static_cast<prayertimes::CalculationMethod>(i));
+						break;
+					}
+				if (i == prayertimes::CalculationMethodsCount)		// If none of method names has matched
+				{
+					fprintf(stderr, "Error: Unknown calculation method '%s'\n", optarg);
+					return 2;
+				}
+				break;
+			case 'a':		// --asr-juristics-method
+				if (strcmp(optarg, "standard") == 0)
+					prayer_times.settings.asr_juristics_method = prayertimes::StandardAsr;
 				else if (strcmp(optarg, "hanafi") == 0)
-					prayer_times.set_asr_method(PrayerTimes::Hanafi);
+					prayer_times.settings.asr_juristics_method = prayertimes::HanafiAsr;
 				else
 				{
-					fprintf(stderr, "Error: Unknown method '%s'\n", optarg);
+					fprintf(stderr, "Error: Unknown Asr juristics method '%s'\n", optarg);
 					return 2;
 				}
 				break;
 			case 'i':		// --high-lats-method
 				if (strcmp(optarg, "none") == 0)
-					prayer_times.set_high_lats_adjust_method(PrayerTimes::None);
+					prayer_times.settings.high_latitudes_method = prayertimes::None;
 				else if (strcmp(optarg, "midnight") == 0)
-					prayer_times.set_high_lats_adjust_method(PrayerTimes::MidNight);
+					prayer_times.settings.high_latitudes_method = prayertimes::NightMiddle;
 				else if (strcmp(optarg, "oneseventh") == 0)
-					prayer_times.set_high_lats_adjust_method(PrayerTimes::OneSeventh);
+					prayer_times.settings.high_latitudes_method = prayertimes::OneSeventh;
 				else if (strcmp(optarg, "anglebased") == 0)
-					prayer_times.set_high_lats_adjust_method(PrayerTimes::AngleBased);
+					prayer_times.settings.high_latitudes_method = prayertimes::AngleBased;
 				else
 				{
 					fprintf(stderr, "Error: Unknown method '%s'\n", optarg);
@@ -285,16 +315,25 @@ int main(int argc, char* argv[])
 	fputs(PROG_NAME_FRIENDLY " " PROG_VERSION "\n\n", stderr);
 
 	if (isnan(timezone))
-		timezone = PrayerTimes::get_effective_timezone(date);
+		timezone = PrayerTimes::get_timezone(date);
 
-	double times[PrayerTimes::TimesCount];
+	double times[prayertimes::TimesCount];
 	fprintf(stderr, "date          : %s", ctime(&date));
 	fprintf(stderr, "timezone      : %.1lf\n", timezone);
 	fprintf(stderr, "latitude      : %.5lf\n", latitude);
 	fprintf(stderr, "longitude     : %.5lf\n", longitude);
-	puts("");
-	prayer_times.get_prayer_times(date, latitude, longitude, timezone, times);
-	for (int i = 0; i < PrayerTimes::TimesCount; ++i)
-		printf("%8s : %s\n", TimeName[i], PrayerTimes::float_time_to_time24(times[i]).c_str());
+	fprintf(stderr, "elevation     : %.5lf\n", elevation);
+	fprintf(stderr, "method        : %s\n", CalculationMethodName[prayer_times.get_calc_method()]);
+	putc('\n', stderr);
+	prayer_times.get_prayer_times(date, latitude, longitude, elevation, timezone, times);
+	for (int i = 0; i < prayertimes::TimesCount; ++i)
+	{
+		int seconds = times[i];
+		int hours = seconds / 3600;
+		seconds %= 3600;
+		int minutes = seconds / 60;
+		seconds %= 60;
+		printf("%8s : %.2u:%.2u:%.2u\n", TimeName[i], hours, minutes, seconds);
+	}
 	return 0;
 }

@@ -4,4 +4,4 @@ project(prayertimes)
 
 add_executable(prayertimes prayertimes.cpp)
 
-add_definitions(-Wall)
+add_definitions(-Wall -std=c++0x)
