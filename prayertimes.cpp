@@ -1,10 +1,10 @@
 /*-------------------- In the name of God ----------------------*\
 
-    PrayerTimes 1.0
+    PrayerTimes 1.1
     Islamic prayer times calculator
 
 Developed by:
-  Mohammad Ebrahim Mohammadi Panah <ebrahim at mohammadi dot ir>
+  Ebrahim Mohammadi <ebrahim at mohammadi dot ir>
 
 ------------------------------------------------------------------
 
@@ -36,7 +36,7 @@ http://www.gnu.org/copyleft/gpl.html
 
 #define PROG_NAME "prayertimes"
 #define PROG_NAME_FRIENDLY "PrayerTimes"
-#define PROG_VERSION "1.0"
+#define PROG_VERSION "1.1"
 
 using prayertimes::PrayerTimes;
 
@@ -225,7 +225,7 @@ int main(int argc, char* argv[])
 				tm* new_date = getdate(optarg);
 				if (!new_date)
 				{
-					fprintf(stderr, "Error: Failed to parse '%s' as date (%m)\n", optarg);
+					fprintf(stderr, "Error: Failed to parse '%s' as date\n", optarg);
 					return 2;
 				}
 				date = mktime(new_date);
@@ -333,7 +333,13 @@ int main(int argc, char* argv[])
 		seconds %= 3600;
 		int minutes = seconds / 60;
 		seconds %= 60;
-		printf("%8s : %.2u:%.2u:%.2u\n", TimeName[i], hours, minutes, seconds);
+		const char* the_next_day = "";
+		if (hours >= 24)
+		{
+			hours -= 24;
+			the_next_day = " the next day";
+		}
+		printf("%8s : %.2u:%.2u:%.2u%s\n", TimeName[i], hours, minutes, seconds, the_next_day);
 	}
 	return 0;
 }
