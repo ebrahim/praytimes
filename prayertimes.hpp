@@ -6,12 +6,12 @@
 
 ----------------------------- Copyright Block --------------------------------
 
-Copyright (C) 2007-2010 PrayTimes.org
+Copyright (C) 2007-2011 PrayTimes.org
 
-Developed By: Ebrahim Mohammadi <ebrahim at mohammadi dot ir>
-Based on a JavaScript Code By: Hamid Zarrabi-Zadeh
+Developed by: Ebrahim Mohammadi <ebrahim at mohammadi dot ir>
+Based on a JavaScript code by: Hamid Zarrabi-Zadeh
 
-License: GNU General Public License, ver 3
+License: GNU Lesser General Public License, ver 3
 
 TERMS OF USE:
     Permission is granted to use this code, with or
